@@ -16,10 +16,18 @@ import (
 
 var defaultConfigOptions = &ConfigOptions{
 	APICallTimeout: 60 * time.Second,
+	Client: &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	},
 }
 
 type ConfigOptions struct {
 	APICallTimeout time.Duration
+	Client *http.Client
 }
 
 // BigIP is a container for our session state.
@@ -28,7 +36,6 @@ type BigIP struct {
 	User          string
 	Password      string
 	Token         string // if set, will be used instead of User/Password
-	Transport     *http.Transport
 	ConfigOptions *ConfigOptions
 }
 
@@ -67,15 +74,19 @@ func NewSession(host, user, passwd string, configOptions *ConfigOptions) *BigIP 
 	if configOptions == nil {
 		configOptions = defaultConfigOptions
 	}
+	if configOptions.Client == nil {
+		configOptions.Client = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		}
+	}
 	return &BigIP{
 		Host:     url,
 		User:     user,
 		Password: passwd,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
 		ConfigOptions: configOptions,
 	}
 }
@@ -145,10 +156,7 @@ func NewTokenSession(host, user, passwd, loginProviderName string, configOptions
 // APICall is used to query the BIG-IP web API.
 func (b *BigIP) APICall(options *APIRequest) ([]byte, error) {
 	var req *http.Request
-	client := &http.Client{
-		Transport: b.Transport,
-		Timeout:   b.ConfigOptions.APICallTimeout,
-	}
+	client := b.ConfigOptions.Client
 	var format string
 	if strings.Contains(options.URL, "mgmt/") {
 		format = "%s/%s"
