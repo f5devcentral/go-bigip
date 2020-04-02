@@ -2251,13 +2251,20 @@ func (b *BigIP) VirtualServers() (*VirtualServers, error) {
 func (b *BigIP) CreateVirtualServer(name, destination, mask, pool string, vlans_enabled bool, port int, translate_address, translate_port string) error {
 	subnetMask := cidr[mask]
 
-	if strings.Contains(mask, ".") {
+	if strings.Contains(mask, ".") || strings.Contains(mask, ":") {
 		subnetMask = mask
+	}
+
+	destPort := fmt.Sprintf("%s:%d", destination, port)
+
+	// IPv6 Destinations use a "." port delimeter
+	if strings.Contains(destination, ":") {
+		destPort = fmt.Sprintf("%s.%d", destination, port)
 	}
 
 	config := &VirtualServer{
 		Name:             name,
-		Destination:      fmt.Sprintf("%s:%d", destination, port),
+		Destination:      destPort,
 		Mask:             subnetMask,
 		Pool:             pool,
 		TranslateAddress: translate_address,
