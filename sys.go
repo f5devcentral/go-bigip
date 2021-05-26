@@ -185,6 +185,90 @@ type TRAP struct {
 	Version                  string `json:"version,omitempty"`
 }
 
+type Volumes struct {
+	Volumes []Volume `json:"items"`
+}
+
+type Volume struct {
+	Name      string `json:"name,omitempty"`
+	Fullpath  string `json:"fullPath,omitempty"`
+	Basebuild string `json:"basebuild,omitempty"`
+	Build     string `json:"build,omitempty"`
+	Product   string `json:"product,omitempty"`
+	Status    string `json:"status,omitempty"`
+	Version   string `json:"version,omitempty"`
+	Active    bool   `json:"active,omitempty"`
+	Media     []struct {
+		Defaultbootlocation bool   `json:"defaultBootLocation,omitempty"`
+		Name                string `json:"name,omitempty"`
+		Media               string `json:"media,omitempty"`
+		Size                string `json:"size,omitempty"`
+	}
+}
+
+type Images struct {
+	Images []Image `json:"items"`
+}
+
+type Image struct {
+	Name         string `json:"name,omitempty"`
+	Fullpath     string `json:"fullPath,omitempty"`
+	Build        string `json:"build,omitempty"`
+	BuildDate    string `json:"buildDate,omitempty"`
+	Checksum     string `json:"checksum,omitempty"`
+	Product      string `json:"product,omitempty"`
+	Filesize     string `json:"fileSize,omitempty"`
+	Version      string `json:"version,omitempty"`
+	LastModified string `json:"lastModified,omitempty"`
+	Verified     string `json:"verified,omitempty"`
+}
+
+type Hotfixes struct {
+	Hotfixes []Hotfix `json:"items"`
+}
+
+type Hotfix struct {
+	Name         string `json:"name,omitempty"`
+	Id           string `json:"id,omitempty"`
+	Title        string `json:"title,omitempty"`
+	Fullpath     string `json:"fullPath,omitempty"`
+	Build        string `json:"build,omitempty"`
+	BuildDate    string `json:"buildDate,omitempty"`
+	Checksum     string `json:"checksum,omitempty"`
+	Product      string `json:"product,omitempty"`
+	Filesize     string `json:"fileSize,omitempty"`
+	Version      string `json:"version,omitempty"`
+	LastModified string `json:"lastModified,omitempty"`
+	Verified     string `json:"verified,omitempty"`
+}
+
+type Options interface {
+	getOption() bool
+}
+
+type OptionCreateVol struct {
+	CreateVolume bool `json:"create-volume,omitempty"`
+}
+
+type OptionReboot struct {
+	Reboot bool `json:"reboot,omitempty"`
+}
+
+func (o *OptionCreateVol) getOption() bool {
+	return o.CreateVolume
+}
+
+func (o *OptionReboot) getOption() bool {
+	return o.Reboot
+}
+
+type InstallConfig struct {
+	Command string    `json:"command"`
+	Name    string    `json:"name"`
+	Volume  string    `json:"volume"`
+	Options []Options `json:"options"`
+}
+
 type Bigiplicenses struct {
 	Bigiplicenses []Bigiplicense `json:"items"`
 }
@@ -256,6 +340,10 @@ const (
 	uriUtil            = "util"
 	uriBash            = "bash"
 	uriVersion         = "version"
+	uriSoftware        = "software"
+	uriVolume          = "volume"
+	uriImage           = "image"
+	uriHotfix          = "hotfix"
 	uriNtp             = "ntp"
 	uriDNS             = "dns"
 	uriProvision       = "provision"
@@ -865,4 +953,118 @@ func (b *BigIP) ModifyLogPublisher(r *LogPublisher) error {
 
 func (b *BigIP) DeleteLogPublisher(name string) error {
 	return b.delete(uriSys, uriLogConfig, uriPublisher, name)
+}
+
+func (b *BigIP) Volumes() (*Volumes, error) {
+	var volumes Volumes
+	err, _ := b.getForEntity(&volumes, uriSys, uriSoftware, uriVolume)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &volumes, nil
+}
+
+func (b *BigIP) Volume(name string) (*Volume, error) {
+	var volume Volume
+	err, _ := b.getForEntity(&volume, uriSys, uriSoftware, uriVolume, name)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &volume, nil
+}
+
+func (b *BigIP) DeleteVolume(name string) error {
+	return b.delete(uriSys, uriSoftware, uriVolume, name)
+}
+
+func (b *BigIP) Images() (*Images, error) {
+	var images Images
+	err, _ := b.getForEntity(&images, uriSys, uriSoftware, uriImage)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &images, nil
+}
+
+func (b *BigIP) Image(name string) (*Image, error) {
+	var image Image
+	err, _ := b.getForEntity(&image, uriSys, uriSoftware, uriImage, name)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &image, nil
+}
+
+func (b *BigIP) InstallImage(name string,
+	volumename string,
+	reboot bool,
+	create_volume bool) error {
+	options := []Options{
+		&OptionCreateVol{CreateVolume: create_volume},
+		&OptionReboot{Reboot: reboot},
+	}
+	config := &InstallConfig{
+		Command: "install",
+		Name:    name,
+		Volume:  volumename,
+		Options: options,
+	}
+
+	return b.post(config, uriSys, uriSoftware, uriImage)
+}
+
+func (b *BigIP) DeleteImage(name string) error {
+	return b.delete(uriSys, uriSoftware, uriImage, name)
+}
+
+func (b *BigIP) Hotfixes() (*Hotfixes, error) {
+	var hotfixes Hotfixes
+	err, _ := b.getForEntity(&hotfixes, uriSys, uriSoftware, uriHotfix)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &hotfixes, nil
+}
+
+func (b *BigIP) Hotfix(name string) (*Hotfix, error) {
+	var hotfix Hotfix
+	err, _ := b.getForEntity(&hotfix, uriSys, uriSoftware, uriHotfix, name)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &hotfix, nil
+}
+
+func (b *BigIP) InstallHotfix(name string,
+	volume string,
+	reboot bool,
+	create_volume bool) error {
+	options := []Options{
+		&OptionCreateVol{CreateVolume: create_volume},
+		&OptionReboot{Reboot: reboot},
+	}
+	config := &InstallConfig{
+		Command: "install",
+		Name:    name,
+		Volume:  volume,
+		Options: options,
+	}
+
+	return b.post(config, uriSys, uriSoftware, uriHotfix)
+}
+
+func (b *BigIP) DeleteHotfix(name string) error {
+	return b.delete(uriSys, uriSoftware, uriHotfix, name)
 }
