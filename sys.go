@@ -285,6 +285,7 @@ const (
 	uriSslCert         = "ssl-cert"
 	uriSslKey          = "ssl-key"
 	uriDataGroup       = "data-group"
+	uriFolder		   = "folder"
 	REST_DOWNLOAD_PATH = "/var/config/rest/downloads"
 )
 
@@ -358,6 +359,22 @@ type Key struct {
 	SourcePath     string `json:"sourcePath,omitempty"`
 	SystemPath     string `json:"systemPath,omitempty"`
 	UpdatedBy      string `json:"updatedBy,omitempty"`
+}
+
+type Folders struct {
+	Folders []Folder `json:"items,omitempty"`
+}
+
+type Folder struct {
+	AppService            string `json:"appService,omitempty"`
+	Description           string `json:"description,omitempty"`
+	DeviceGroup           string `json:"deviceGroup,omitempty"`
+	Hidden                string `json:"hidden,omitempty"`
+	InheritedDevicegroup  string `json:"inheritedDevicegroup,omitempty"`
+	InheritedTrafficGroup string `json:"inheritedTrafficGroup,omitempty"`
+	Name                  string `json:"name,omitempty"`
+	NoRefCheck            string `json:"noRefCheck,omitempty"`
+	TrafficGroup          string `json:"trafficGroup,omitempty"`
 }
 
 // Certificates returns a list of certificates.
@@ -949,4 +966,41 @@ func (b *BigIP) UploadDataGroupFile(f *os.File, tmpName string) (*Upload, error)
 	}
 	log.Printf("tmpName:%+v", tmpName)
 	return b.Upload(f, info.Size(), uriShared, uriFileTransfer, uriUploads, fmt.Sprintf("%s", tmpName))
+}
+
+
+// Folders returns a list of folders.
+func (b *BigIP) Folders() (*Folders, error) {
+	var folders Folders
+	err, _ := b.getForEntity(&folders, uriFolder)
+	if err != nil {
+		return nil, err
+	}
+
+	return &folders, nil
+}
+
+func (b *BigIP) AddFolder(config *Folder) error {
+	return b.post(config, uriFolder)
+}
+
+func (b *BigIP) ModifyFolder(folderName string, config *Folder) error {
+	return b.patch(config, uriFolder, folderName)
+}
+
+func (b *BigIP) GetFolder(name string) (*Folder, error) {
+	var folder Folder
+	err, ok := b.getForEntity(&folder, uriFolder, name)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, nil
+	}
+
+	return &folder, nil
+}
+
+func (b *BigIP) DeleteFolder(name string) error {
+	return b.delete(uriFolder, name)
 }
