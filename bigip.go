@@ -29,10 +29,14 @@ import (
 
 var defaultConfigOptions = &ConfigOptions{
 	APICallTimeout: 60 * time.Second,
+	TokenTimeout:   1200 * time.Second,
+	APICallRetries: 10,
 }
 
 type ConfigOptions struct {
 	APICallTimeout time.Duration
+	TokenTimeout   time.Duration
+	APICallRetries int
 }
 
 type Config struct {
@@ -230,38 +234,65 @@ func (b *BigIP) APICall(options *APIRequest) ([]byte, error) {
 		format = "%s/mgmt/tm/%s"
 	}
 	url := fmt.Sprintf(format, b.Host, options.URL)
-	body := bytes.NewReader([]byte(options.Body))
-	req, _ = http.NewRequest(strings.ToUpper(options.Method), url, body)
-	if b.Token != "" {
-		req.Header.Set("X-F5-Auth-Token", b.Token)
-	} else if options.URL != "mgmt/shared/authn/login" {
-		req.SetBasicAuth(b.User, b.Password)
-	}
 
-	//fmt.Println("REQ -- ", options.Method, " ", url," -- ",options.Body)
+	maxRetries := b.ConfigOptions.APICallRetries
 
-	if len(options.ContentType) > 0 {
-		req.Header.Set("Content-Type", options.ContentType)
-	}
+	for i := 0; i < maxRetries; i++ {
 
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer res.Body.Close()
-
-	data, _ := ioutil.ReadAll(res.Body)
-
-	if res.StatusCode >= 400 {
-		if res.Header["Content-Type"][0] == "application/json" {
-			return data, b.checkError(data)
+		body := bytes.NewReader([]byte(options.Body))
+		req, _ = http.NewRequest(strings.ToUpper(options.Method), url, body)
+		if b.Token != "" {
+			req.Header.Set("X-F5-Auth-Token", b.Token)
+		} else if options.URL != "mgmt/shared/authn/login" {
+			req.SetBasicAuth(b.User, b.Password)
 		}
 
-		return data, errors.New(fmt.Sprintf("HTTP %d :: %s", res.StatusCode, string(data[:])))
+		//fmt.Println("REQ -- ", options.Method, " ", url," -- ",options.Body)
+
+		if len(options.ContentType) > 0 {
+			req.Header.Set("Content-Type", options.ContentType)
+		}
+
+		res, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		data, _ := ioutil.ReadAll(res.Body)
+		res.Body.Close()
+
+		// Log out the response when debugging
+		//fmt.Printf("[INFO] HTTP RESPONSE %d :: %s", res.StatusCode, string(data[:]))
+
+		contentType := ""
+		if ctHeaders, ok := res.Header["Content-Type"]; ok && len(ctHeaders) > 0 {
+			contentType = ctHeaders[0]
+		}
+
+		if res.StatusCode >= 400 {
+			if strings.Contains(contentType, "application/json") {
+				var reqError RequestError
+				err = json.Unmarshal(data, &reqError)
+				if err != nil {
+					return nil, err
+				}
+
+				// With how some of the requests come back from AS3, we sometimes have a nested error, so check the entire message for the "active asynchronous task" error
+				if res.StatusCode == 503 || reqError.Code == 503 || strings.Contains(strings.ToLower(reqError.Message), strings.ToLower("there is an active asynchronous task executing")) {
+					time.Sleep(10 * time.Second)
+					fmt.Printf("[ERROR] encountered 503 error against %s, retrying %d of %d", options.URL, i+1, maxRetries)
+					continue
+				}
+
+				return data, b.checkError(data)
+			} else {
+				return data, fmt.Errorf("HTTP %d :: %s", res.StatusCode, string(data[:]))
+			}
+		}
+		return data, nil
 	}
 
-	return data, nil
+	return nil, fmt.Errorf("service unavailable after %d attempts", maxRetries)
 }
 
 func (b *BigIP) iControlPath(parts []string) string {
@@ -295,6 +326,44 @@ func (b *BigIP) deleteReq(path ...string) ([]byte, error) {
 
 	resp, callErr := b.APICall(req)
 	return resp, callErr
+}
+
+// Purge Token function
+func (b *BigIP) PurgeToken() error {
+
+	if b.Token != "" {
+		var tokenUri = fmt.Sprintf("mgmt/shared/authz/tokens/%s", b.Token)
+		req := &APIRequest{
+			Method: "delete",
+			URL:    tokenUri,
+		}
+
+		_, err := b.APICall(req)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	return nil
+}
+
+// Set Token Timeout to explicitly set token timeout value
+func (b *BigIP) SetTokenTimeout(timeout time.Duration) error {
+	var tokenUri = fmt.Sprintf("mgmt/shared/authz/tokens/%s", b.Token)
+	var timeoutBody = fmt.Sprintf(`{"timeout": %d}`, int(timeout.Seconds()))
+	req := &APIRequest{
+		Method:      "patch",
+		URL:         tokenUri,
+		Body:        timeoutBody,
+		ContentType: "application/json",
+	}
+
+	_, err := b.APICall(req)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *BigIP) deleteReqBody(body interface{}, path ...string) ([]byte, error) {
