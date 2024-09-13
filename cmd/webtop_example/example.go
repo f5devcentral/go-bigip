@@ -25,7 +25,7 @@ func main() {
 	defer cancel()
 
 	conf := bigip.WebtopConfig{
-		Description:        "Call me",
+		Description:        "A webtop example",
 		Type:               bigip.WebtopTypePortal,
 		LinkType:           bigip.LinkTypeUri,
 		CustomizationType:  bigip.CustomizationTypeModern,
