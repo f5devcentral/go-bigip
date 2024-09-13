@@ -57,14 +57,8 @@ func (b *BigIP) DeleteWorkspace(ctx context.Context, name string) error {
 	return nil
 }
 
-type ExtensionConfig struct {
-	Name          string `json:"name,omitempty"`
-	Partition     string `json:"partition,omitempty"`
-	WorkspaceName string `json:"workspaceName,omitempty"`
-}
-
 func (b *BigIP) CreateExtension(ctx context.Context, opts ExtensionConfig) error {
-	err := b.post(ILXWorkspace{Name: opts.WorkspaceName}, uriMgmt, uriTm, uriIlx, uriWorkspace+"?options=extension,"+opts.Name)
+	err := b.post(ILXWorkspace{Name: opts.WorkspaceName}, uriMgmt, uriTm, uriIlx, uriWorkspace+"?options=extension,"+opts.ExtensionName)
 	if err != nil {
 		return fmt.Errorf("error creating ILX Extension: %w", err)
 	}
@@ -85,11 +79,30 @@ const (
 	IndexJS     ExtensionFile = "index.js"
 )
 
+type WorkspaceConfig struct {
+	WorkspaceName string `json:"name,omitempty"`
+	Partition     string `json:"partition,omitempty"`
+}
+
+type ExtensionConfig struct {
+	WorkspaceConfig
+	ExtensionName string `json:"extensionName,omitempty"`
+}
+
+func (b *BigIP) WriteRuleFile(ctx context.Context, opts WorkspaceConfig, content string, filename string) error {
+	destination := fmt.Sprintf("%s/%s/%s/rules/%s", WORKSPACE_UPLOAD_PATH, opts.Partition, opts.WorkspaceName, filename)
+	err := b.WriteFile(content, destination)
+	if err != nil {
+		return fmt.Errorf("error uploading rule file: %w", err)
+	}
+	return nil
+}
+
 func (b *BigIP) WriteExtensionFile(ctx context.Context, opts ExtensionConfig, content string, filename ExtensionFile) error {
 	if err := filename.Validate(); err != nil {
 		return err
 	}
-	destination := fmt.Sprintf("%s/%s/%s/extensions/%s/%s", WORKSPACE_UPLOAD_PATH, opts.Partition, opts.WorkspaceName, opts.Name, filename)
+	destination := fmt.Sprintf("%s/%s/%s/extensions/%s/%s", WORKSPACE_UPLOAD_PATH, opts.WorkspaceConfig.Partition, opts.WorkspaceConfig.WorkspaceName, opts.ExtensionName, filename)
 	err := b.WriteFile(content, destination)
 	if err != nil {
 		return fmt.Errorf("error uploading packagejson: %w", err)
@@ -101,7 +114,16 @@ func (b *BigIP) ReadExtensionFile(ctx context.Context, opts ExtensionConfig, fil
 	if err := filename.Validate(); err != nil {
 		return nil, err
 	}
-	destination := fmt.Sprintf("%s/%s/%s/extensions/%s/%s", WORKSPACE_UPLOAD_PATH, opts.Partition, opts.WorkspaceName, opts.Name, filename)
+	destination := fmt.Sprintf("%s/%s/%s/extensions/%s/%s", WORKSPACE_UPLOAD_PATH, opts.Partition, opts.WorkspaceConfig.WorkspaceName, opts.ExtensionName, filename)
+	files, err := b.ReadFile(destination)
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
+func (b *BigIP) ReadRuleFile(ctx context.Context, opts WorkspaceConfig, filename string) (*ILXFile, error) {
+	destination := fmt.Sprintf("%s/%s/%s/rules/%s", WORKSPACE_UPLOAD_PATH, opts.Partition, opts.WorkspaceName, filename)
 	files, err := b.ReadFile(destination)
 	if err != nil {
 		return nil, err
