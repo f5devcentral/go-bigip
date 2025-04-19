@@ -1,0 +1,15 @@
+{
+  "name": "ilx",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run dev"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "f5-nodejs": "^1.0.0",
+    "hexy": "^0.3.5"
+  }
+}

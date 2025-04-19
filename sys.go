@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"strconv"
 
 	//"strings"
@@ -668,7 +669,6 @@ func (b *BigIP) CreateProvision(name string, fullPath string, cpuRatio int, disk
 	}
 	if name == "afm" {
 		return b.put(config, uriSys, uriProvision, uriAfm)
-
 	}
 	if name == "gtm" {
 		return b.put(config, uriSys, uriProvision, uriGtm)
@@ -834,7 +834,6 @@ func (b *BigIP) StartTransaction() (*Transaction, error) {
 	b.Transaction = ""
 	body := make(map[string]interface{})
 	resp, err := b.postReq(body, uriMgmt, uriTm, uriTransaction)
-
 	if err != nil {
 		return nil, fmt.Errorf("error encountered while starting transaction: %v", err)
 	}
@@ -1051,7 +1050,6 @@ func (b *BigIP) GetOCSP(name string) (*OCSP, error) {
 	}
 
 	js, err := json.Marshal(ocsp)
-
 	if err != nil {
 		return nil, fmt.Errorf("error encountered while marshalling ocsp: %v", err)
 	}
@@ -1097,4 +1095,34 @@ func (b *BigIP) DeletePartition(name string) error {
 func (b *BigIP) ModifyFolderDescription(partition string, body map[string]string) error {
 	partition = fmt.Sprintf("~%s", partition)
 	return b.patch(body, uriSys, uriFolder, partition)
+}
+
+// Write to a file using the echo command: echo "content" > destination
+func (b *BigIP) WriteFile(content string, destination string) error {
+	cmd := BigipCommand{
+		Command:     "run",
+		UtilCmdArgs: fmt.Sprintf("-c 'echo \"%s\" > \"%s\"'", content, destination),
+	}
+	_, err := b.RunCommand(&cmd)
+	if err != nil {
+		return fmt.Errorf("error running command: %w", err)
+	}
+	return nil
+}
+
+// Read a file using the cat command
+func (b *BigIP) ReadFile(destination string) (*ILXFile, error) {
+	fileContentCommand := BigipCommand{
+		Command:     "run",
+		UtilCmdArgs: fmt.Sprintf("-c 'cat %s'", destination),
+	}
+	fileContent, err := b.RunCommand(&fileContentCommand)
+	if err != nil {
+		return nil, fmt.Errorf("error running command: %w", err)
+	}
+	file := &ILXFile{
+		Name:    path.Base(destination),
+		Content: fileContent.CommandResult,
+	}
+	return file, nil
 }
