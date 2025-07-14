@@ -1623,8 +1623,8 @@ type Originsrecords struct {
 }
 
 type Originsrecord struct {
-	Name        string `json:"name"`
-	app_service string `json:"appService,omitempty"`
+	Name       string `json:"name"`
+	AppService string `json:"appService,omitempty"`
 }
 
 func (p *Snat) MarshalJSON() ([]byte, error) {
@@ -4259,17 +4259,7 @@ func (b *BigIP) AddRequestLogProfile(config *RequestLogProfile) error {
 	return b.post(config, uriLtm, uriProfile, uriRequestLog)
 }
 
-// DeleteRequestLogProfile removes a Request Log profile.
-func (b *BigIP) DeleteRequestLogProfile(name string) error {
-	return b.delete(uriLtm, uriProfile, uriRequestLog, name)
-}
-
-// ModifyRequestLogProfile allows you to change any attribute of a RequestLog profile.
-// Fields that can be modified are referenced in the RequestLogProfile struct.
-func (b *BigIP) ModifyRequestLogProfile(name string, config *RequestLogProfile) error {
-	return b.patch(config, uriLtm, uriProfile, uriRequestLog, name)
-}
-
+// GetRequestLogProfile gets a request log profile by name. Returns nil if the request log profile does not exist
 func (b *BigIP) GetRequestLogProfile(name string) (*RequestLogProfile, error) {
 	var requestLogProfile RequestLogProfile
 	err, ok := b.getForEntity(&requestLogProfile, uriLtm, uriProfile, uriRequestLog, name)
@@ -4282,6 +4272,17 @@ func (b *BigIP) GetRequestLogProfile(name string) (*RequestLogProfile, error) {
 	}
 
 	return &requestLogProfile, nil
+}
+
+// DeleteRequestLogProfile removes a Request Log profile.
+func (b *BigIP) DeleteRequestLogProfile(name string) error {
+	return b.delete(uriLtm, uriProfile, uriRequestLog, name)
+}
+
+// ModifyRequestLogProfile allows you to change any attribute of a RequestLog profile.
+// Fields that can be modified are referenced in the RequestLogProfile struct.
+func (b *BigIP) ModifyRequestLogProfile(name string, config *RequestLogProfile) error {
+	return b.patch(config, uriLtm, uriProfile, uriRequestLog, name)
 }
 
 type BotDefenseProfile struct {

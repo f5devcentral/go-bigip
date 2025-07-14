@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -153,26 +154,29 @@ func NewTokenSession(bigipConfig *Config) (b *BigIP, err error) {
 		Timeout struct {
 			Timeout int64
 		}
+		RefreshToken interface{} `json:"refreshToken,omitempty"`
 	}
 
 	type timeoutReq struct {
 		Timeout int64 `json:"timeout"`
 	}
 
-	// type timeoutResp struct {
-	// 	Timeout struct {
-	// 		Timeout int64
-	// 	}
-	// }
-
+	if bigipConfig.LoginReference == "" {
+		logInfo("LoginProviderName not set, defaulting to 'tmos'")
+		bigipConfig.LoginReference = "tmos"
+	} else {
+		logInfo("Using LoginProviderName: %s", bigipConfig.LoginReference)
+	}
 	auth := authReq{
 		bigipConfig.Username,
 		bigipConfig.Password,
 		bigipConfig.LoginReference,
 	}
+	logDebug("Auth request: %+v", auth)
 
 	marshalJSONauth, err := json.Marshal(auth)
 	if err != nil {
+		logError("Failed to marshal auth request: %v", err)
 		return
 	}
 
@@ -182,6 +186,7 @@ func NewTokenSession(bigipConfig *Config) (b *BigIP, err error) {
 		Body:        string(marshalJSONauth),
 		ContentType: "application/json",
 	}
+	logDebug("APIRequest: %+v", req)
 
 	b = NewSession(bigipConfig)
 	if !bigipConfig.CertVerifyDisable {
@@ -204,6 +209,7 @@ func NewTokenSession(bigipConfig *Config) (b *BigIP, err error) {
 		b.Transport.TLSClientConfig.RootCAs = rootCAs
 	}
 	resp, err := b.APICall(req)
+	logDebug("APIResponse: %s", string(resp))
 	if err != nil {
 		return
 	}
@@ -219,6 +225,15 @@ func NewTokenSession(bigipConfig *Config) (b *BigIP, err error) {
 		return
 	}
 
+	// Use authResp struct to detect BIG-IQ
+	if aresp.RefreshToken != nil {
+		logInfo("Detected BIG-IQ platform (RefreshToken present in authResp)")
+		// Optionally: b.Platform = "BIG-IQ"
+	} else {
+		logInfo("Detected BIG-IP platform (RefreshToken absent in authResp)")
+		// Optionally: b.Platform = "BIG-IP"
+	}
+
 	if aresp.Token.Token == "" {
 		err = fmt.Errorf("unable to acquire authentication token")
 		return
@@ -227,7 +242,7 @@ func NewTokenSession(bigipConfig *Config) (b *BigIP, err error) {
 	b.Token = aresp.Token.Token
 
 	//Once we have obtained a token, we should actually apply the configured timeout to it
-	if time.Duration(aresp.Timeout.Timeout)*time.Second != bigipConfig.ConfigOptions.TokenTimeout { // The inital value is the max timespan
+	if aresp.RefreshToken == nil && time.Duration(aresp.Timeout.Timeout)*time.Second != bigipConfig.ConfigOptions.TokenTimeout { // The inital value is the max timespan
 		timeout := timeoutReq{
 			int64(bigipConfig.ConfigOptions.TokenTimeout.Seconds()),
 		}
@@ -617,6 +632,12 @@ func (b *BigIP) getForEntity(e interface{}, path ...string) (error, bool) {
 	}
 
 	resp, err := b.APICall(req)
+	// add log for debugging
+	logDebug("APIRequest: %+v", req)
+	logDebug("APIResponse: %s", string(resp))
+	// If we get an error, we need to check if it is a 404 error.
+	// check error code and response body
+
 	if err != nil {
 		var reqError RequestError
 		json.Unmarshal(resp, &reqError)
@@ -735,4 +756,19 @@ func toBoolString(b bool, trueStr, falseStr string) string {
 		return trueStr
 	}
 	return falseStr
+}
+
+// Logging helpers
+func logDebug(format string, v ...interface{}) {
+	if os.Getenv("LOG_LEVEL") == "DEBUG" {
+		log.Printf("[DEBUG] "+format, v...)
+	}
+}
+func logInfo(format string, v ...interface{}) {
+	if os.Getenv("LOG_LEVEL") == "INFO" || os.Getenv("LOG_LEVEL") == "DEBUG" {
+		log.Printf("[INFO] "+format, v...)
+	}
+}
+func logError(format string, v ...interface{}) {
+	log.Printf("[ERROR] "+format, v...)
 }
