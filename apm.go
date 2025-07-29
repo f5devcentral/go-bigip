@@ -33,7 +33,6 @@ const (
 )
 
 const (
-	uriApmProfile   = "profile"
 	uriAccess       = "access"
 	uriAccessPolicy = "access-policy"
 )
@@ -238,7 +237,7 @@ type AccessPolicy struct {
 // GetAccessProfile gets an access profile by name. Returns nil if the access profile does not exist
 func (b *BigIP) GetAccessProfile(name string) (*AccessProfile, error) {
 	var accessProfile AccessProfile
-	err, ok := b.getForEntity(&accessProfile, uriMgmt, uriTm, uriApm, uriApmProfile, uriAccess, name)
+	err, ok := b.getForEntity(&accessProfile, uriMgmt, uriTm, uriApm, uriProfile, uriAccess, name)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +252,7 @@ func (b *BigIP) GetAccessProfile(name string) (*AccessProfile, error) {
 // AccessProfiles returns a list of all access profiles
 func (b *BigIP) AccessProfiles() (*AccessProfiles, error) {
 	var accessProfiles AccessProfiles
-	err, _ := b.getForEntity(&accessProfiles, uriMgmt, uriTm, uriApm, uriApmProfile, uriAccess)
+	err, _ := b.getForEntity(&accessProfiles, uriMgmt, uriTm, uriApm, uriProfile, uriAccess)
 	if err != nil {
 		return nil, err
 	}
@@ -263,24 +262,24 @@ func (b *BigIP) AccessProfiles() (*AccessProfiles, error) {
 
 // CreateAccessProfile adds a new access profile to the BIG-IP system.
 func (b *BigIP) CreateAccessProfile(config *AccessProfile) error {
-	return b.post(config, uriMgmt, uriTm, uriApm, uriApmProfile, uriAccess)
+	return b.post(config, uriMgmt, uriTm, uriApm, uriProfile, uriAccess)
 }
 
 // DeleteAccessProfile removes an access profile.
 func (b *BigIP) DeleteAccessProfile(name string) error {
-	return b.delete(uriMgmt, uriTm, uriApm, uriApmProfile, uriAccess, name)
+	return b.delete(uriMgmt, uriTm, uriApm, uriProfile, uriAccess, name)
 }
 
 // ModifyAccessProfile allows you to change any attribute of an access profile.
 // Fields that can be modified are referenced in the AccessProfile struct.
 func (b *BigIP) ModifyAccessProfile(name string, config *AccessProfile) error {
-	return b.patch(config, uriMgmt, uriTm, uriApm, uriApmProfile, uriAccess, name)
+	return b.patch(config, uriMgmt, uriTm, uriApm, uriProfile, uriAccess, name)
 }
 
 // GetAccessPolicy gets an access policy by name. Returns nil if the access policy does not exist
 func (b *BigIP) GetAccessPolicy(name string) (*AccessPolicy, error) {
 	var accessPolicy AccessPolicy
-	err, ok := b.getForEntity(&accessPolicy, uriMgmt, uriTm, uriApm, uriAccessPolicy, name)
+	err, ok := b.getForEntity(&accessPolicy, uriMgmt, uriTm, uriApm, uriPolicy, uriAccessPolicy, name)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +294,7 @@ func (b *BigIP) GetAccessPolicy(name string) (*AccessPolicy, error) {
 // AccessPolicies returns a list of all access policies
 func (b *BigIP) AccessPolicies() (*AccessPolicies, error) {
 	var accessPolicies AccessPolicies
-	err, _ := b.getForEntity(&accessPolicies, uriMgmt, uriTm, uriApm, uriAccessPolicy)
+	err, _ := b.getForEntity(&accessPolicies, uriMgmt, uriTm, uriApm, uriPolicy, uriAccessPolicy)
 	if err != nil {
 		return nil, err
 	}
@@ -305,16 +304,16 @@ func (b *BigIP) AccessPolicies() (*AccessPolicies, error) {
 
 // CreateAccessPolicy adds a new access policy to the BIG-IP system.
 func (b *BigIP) CreateAccessPolicy(config *AccessPolicy) error {
-	return b.post(config, uriMgmt, uriTm, uriApm, uriAccessPolicy)
+	return b.post(config, uriMgmt, uriTm, uriApm, uriPolicy, uriAccessPolicy)
 }
 
 // DeleteAccessPolicy removes an access policy.
 func (b *BigIP) DeleteAccessPolicy(name string) error {
-	return b.delete(uriMgmt, uriTm, uriApm, uriAccessPolicy, name)
+	return b.delete(uriMgmt, uriTm, uriApm, uriPolicy, uriAccessPolicy, name)
 }
 
 // ModifyAccessPolicy allows you to change any attribute of an access policy.
 // Fields that can be modified are referenced in the AccessPolicy struct.
 func (b *BigIP) ModifyAccessPolicy(name string, config *AccessPolicy) error {
-	return b.patch(config, uriMgmt, uriTm, uriApm, uriAccessPolicy, name)
+	return b.patch(config, uriMgmt, uriTm, uriApm, uriPolicy, uriAccessPolicy, name)
 }

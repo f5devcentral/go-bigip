@@ -20,10 +20,10 @@ package bigip
 
 // URI constants for ASM operations
 const (
-	uriDosProfile     = "dos/profile"
-	uriFirewallPolicy = "firewall/policy"
-	uriIPIntelligence = "ip-intelligence/policy"
-	uriLogProfile     = "log/profile"
+	uriDos            = "dos"
+	uriFirewall       = "firewall"
+	uriIPIntelligence = "ip-intelligence"
+	uriLog            = "log"
 )
 
 // DOSProfiles contains a list of every DOS profile on the BIG-IP system.
@@ -113,81 +113,75 @@ type SecurityLogProfile struct {
 	Flowspec       struct{} `json:"flowspec,omitempty"`
 	Hidden         string   `json:"hidden,omitempty"`
 	IPIntelligence struct {
-		AggregateRate        int    `json:"aggregateRate,omitempty"`
-		LogGeo               string `json:"logGeo,omitempty"`
-		LogRtbh              string `json:"logRtbh,omitempty"`
-		LogScrubber          string `json:"logScrubber,omitempty"`
-		LogShun              string `json:"logShun,omitempty"`
-		LogTranslationFields string `json:"logTranslationFields,omitempty"`
-	} `json:"ipIntelligence,omitempty"`
+		AggregateRate        int    `json:"aggregate-rate,omitempty"`
+		LogGeo               string `json:"log-geo,omitempty"`
+		LogRtbh              string `json:"log-rtbh,omitempty"`
+		LogScrubber          string `json:"log-scrubber,omitempty"`
+		LogShun              string `json:"log-shun,omitempty"`
+		LogTranslationFields string `json:"log-translation-fields,omitempty"`
+	} `json:"ip-intelligence,omitempty"`
 	NAT struct {
-		EndInboundSession struct {
-			Action string `json:"action,omitempty"`
-		} `json:"endInboundSession,omitempty"`
-		EndOutboundSession struct {
-			Action string `json:"action,omitempty"`
-		} `json:"endOutboundSession,omitempty"`
-		Errors string `json:"errors,omitempty"`
-		Format struct {
+		EndInboundSession    string `json:"end-inbound-session,omitempty"`
+		EndOutboundSession   string `json:"end-outbound-session,omitempty"`
+		Errors               string `json:"errors,omitempty"`
+		LogSubscriberID      string `json:"log-subscriber-id,omitempty"`
+		LsnLegacyMode        string `json:"lsn-legacy-mode,omitempty"`
+		QuotaExceeded        string `json:"quota-exceeded,omitempty"`
+		StartInboundSession  string `json:"start-inbound-session,omitempty"`
+		StartOutboundSession string `json:"start-outbound-session,omitempty"`
+		Format               struct {
 			EndInboundSession struct {
-				FieldListDelimiter string `json:"fieldListDelimiter,omitempty"`
+				FieldListDelimiter string `json:"field-list-delimiter,omitempty"`
 				Type               string `json:"type,omitempty"`
-			} `json:"endInboundSession,omitempty"`
+			} `json:"end-inbound-session,omitempty"`
 			EndOutboundSession struct {
-				FieldListDelimiter string `json:"fieldListDelimiter,omitempty"`
+				FieldListDelimiter string `json:"field-list-delimiter,omitempty"`
 				Type               string `json:"type,omitempty"`
-			} `json:"endOutboundSession,omitempty"`
+			} `json:"end-outbound-session,omitempty"`
 			Errors struct {
-				FieldListDelimiter string `json:"fieldListDelimiter,omitempty"`
+				FieldListDelimiter string `json:"field-list-delimiter,omitempty"`
 				Type               string `json:"type,omitempty"`
 			} `json:"errors,omitempty"`
 			QuotaExceeded struct {
-				FieldListDelimiter string `json:"fieldListDelimiter,omitempty"`
+				FieldListDelimiter string `json:"field-list-delimiter,omitempty"`
 				Type               string `json:"type,omitempty"`
-			} `json:"quotaExceeded,omitempty"`
+			} `json:"quota-exceeded,omitempty"`
 			StartInboundSession struct {
-				FieldListDelimiter string `json:"fieldListDelimiter,omitempty"`
+				FieldListDelimiter string `json:"field-list-delimiter,omitempty"`
 				Type               string `json:"type,omitempty"`
-			} `json:"startInboundSession,omitempty"`
+			} `json:"start-inbound-session,omitempty"`
 			StartOutboundSession struct {
-				FieldListDelimiter string `json:"fieldListDelimiter,omitempty"`
+				FieldListDelimiter string `json:"field-list-delimiter,omitempty"`
 				Type               string `json:"type,omitempty"`
-			} `json:"startOutboundSession,omitempty"`
+			} `json:"start-outbound-session,omitempty"`
 		} `json:"format,omitempty"`
-		LogSubscriberID string `json:"logSubscriberId,omitempty"`
-		LsnLegacyMode   string `json:"lsnLegacyMode,omitempty"`
-		QuotaExceeded   string `json:"quotaExceeded,omitempty"`
-		RateLimit       struct {
-			AggregateRate        int `json:"aggregateRate,omitempty"`
-			EndInboundSession    int `json:"endInboundSession,omitempty"`
-			EndOutboundSession   int `json:"endOutboundSession,omitempty"`
+		RateLimit struct {
+			AggregateRate        int `json:"aggregate-rate,omitempty"`
+			EndInboundSession    int `json:"end-inbound-session,omitempty"`
+			EndOutboundSession   int `json:"end-outbound-session,omitempty"`
 			Errors               int `json:"errors,omitempty"`
-			QuotaExceeded        int `json:"quotaExceeded,omitempty"`
-			StartInboundSession  int `json:"startInboundSession,omitempty"`
-			StartOutboundSession int `json:"startOutboundSession,omitempty"`
-		} `json:"rateLimit,omitempty"`
-		StartInboundSession  string `json:"startInboundSession,omitempty"`
-		StartOutboundSession struct {
-			Action string `json:"action,omitempty"`
-		} `json:"startOutboundSession,omitempty"`
+			QuotaExceeded        int `json:"quota-exceeded,omitempty"`
+			StartInboundSession  int `json:"start-inbound-session,omitempty"`
+			StartOutboundSession int `json:"start-outbound-session,omitempty"`
+		} `json:"rate-limit,omitempty"`
 	} `json:"nat,omitempty"`
 	Netflow      struct{} `json:"netflow,omitempty"`
 	PacketFilter struct {
-		AggregateRate int `json:"aggregateRate,omitempty"`
-	} `json:"packetFilter,omitempty"`
+		AggregateRate int `json:"aggregate-rate,omitempty"`
+	} `json:"packet-filter,omitempty"`
 	PortMisuse struct {
-		AggregateRate int `json:"aggregateRate,omitempty"`
-	} `json:"portMisuse,omitempty"`
+		AggregateRate int `json:"aggregate-rate,omitempty"`
+	} `json:"port-misuse,omitempty"`
 	ProtocolInspection struct {
-		LogPacket string `json:"logPacket,omitempty"`
-	} `json:"protocolInspection,omitempty"`
+		LogPacket string `json:"log-packet,omitempty"`
+	} `json:"protocol-inspection,omitempty"`
 	TrafficStatistics struct {
-		ActiveFlows         string `json:"activeFlows,omitempty"`
-		MissedFlows         string `json:"missedFlows,omitempty"`
-		ReapedFlows         string `json:"reapedFlows,omitempty"`
+		ActiveFlows         string `json:"active-flows,omitempty"`
+		MissedFlows         string `json:"missed-flows,omitempty"`
+		ReapedFlows         string `json:"reaped-flows,omitempty"`
 		Syncookies          string `json:"syncookies,omitempty"`
-		SyncookiesWhitelist string `json:"syncookiesWhitelist,omitempty"`
-	} `json:"trafficStatistics,omitempty"`
+		SyncookiesWhitelist string `json:"syncookies-whitelist,omitempty"`
+	} `json:"traffic-statistics,omitempty"`
 	ApplicationReference struct {
 		Link            string `json:"link,omitempty"`
 		IsSubcollection bool   `json:"isSubcollection,omitempty"`
@@ -209,7 +203,7 @@ type SecurityLogProfile struct {
 // DOSProfiles returns a list of DOS profiles
 func (b *BigIP) DOSProfiles() (*DOSProfiles, error) {
 	var dosProfiles DOSProfiles
-	err, _ := b.getForEntity(&dosProfiles, uriSecurity, uriDosProfile)
+	err, _ := b.getForEntity(&dosProfiles, uriSecurity, uriDos, uriProfile)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +214,7 @@ func (b *BigIP) DOSProfiles() (*DOSProfiles, error) {
 // GetDOSProfile gets a DOS profile by name. Returns nil if the DOS profile does not exist
 func (b *BigIP) GetDOSProfile(name string) (*DOSProfile, error) {
 	var dosProfile DOSProfile
-	err, ok := b.getForEntity(&dosProfile, uriSecurity, uriDosProfile, name)
+	err, ok := b.getForEntity(&dosProfile, uriSecurity, uriDos, uriProfile, name)
 	if err != nil {
 		return nil, err
 	}
@@ -234,24 +228,24 @@ func (b *BigIP) GetDOSProfile(name string) (*DOSProfile, error) {
 
 // AddDOSProfile creates a new DOS profile on the BIG-IP system.
 func (b *BigIP) AddDOSProfile(config *DOSProfile) error {
-	return b.post(config, uriSecurity, uriDosProfile)
+	return b.post(config, uriSecurity, uriDos, uriProfile)
 }
 
 // DeleteDOSProfile removes a DOS profile.
 func (b *BigIP) DeleteDOSProfile(name string) error {
-	return b.delete(uriSecurity, uriDosProfile, name)
+	return b.delete(uriSecurity, uriDos, uriProfile, name)
 }
 
 // ModifyDOSProfile allows you to change any attribute of a DOS profile.
 // Fields that can be modified are referenced in the DOSProfile struct.
 func (b *BigIP) ModifyDOSProfile(name string, config *DOSProfile) error {
-	return b.patch(config, uriSecurity, uriDosProfile, name)
+	return b.patch(config, uriSecurity, uriDos, uriProfile, name)
 }
 
 // FirewallPolicies returns a list of Firewall policies
 func (b *BigIP) FirewallPolicies() (*FirewallPolicies, error) {
 	var firewallPolicies FirewallPolicies
-	err, _ := b.getForEntity(&firewallPolicies, uriSecurity, uriFirewallPolicy, uriWafPol)
+	err, _ := b.getForEntity(&firewallPolicies, uriSecurity, uriFirewall, uriPolicy)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +256,7 @@ func (b *BigIP) FirewallPolicies() (*FirewallPolicies, error) {
 // GetFirewallPolicy gets a Firewall policy by name. Returns nil if the Firewall policy does not exist
 func (b *BigIP) GetFirewallPolicy(name string) (*FirewallPolicy, error) {
 	var firewallPolicy FirewallPolicy
-	err, ok := b.getForEntity(&firewallPolicy, uriSecurity, uriFirewallPolicy, uriWafPol, name)
+	err, ok := b.getForEntity(&firewallPolicy, uriSecurity, uriFirewall, uriPolicy, name)
 	if err != nil {
 		return nil, err
 	}
@@ -276,24 +270,24 @@ func (b *BigIP) GetFirewallPolicy(name string) (*FirewallPolicy, error) {
 
 // AddFirewallPolicy creates a new Firewall policy on the BIG-IP system.
 func (b *BigIP) AddFirewallPolicy(config *FirewallPolicy) error {
-	return b.post(config, uriSecurity, uriFirewallPolicy, uriWafPol)
+	return b.post(config, uriSecurity, uriFirewall, uriPolicy)
 }
 
 // DeleteFirewallPolicy removes a Firewall policy.
 func (b *BigIP) DeleteFirewallPolicy(name string) error {
-	return b.delete(uriSecurity, uriFirewallPolicy, uriWafPol, name)
+	return b.delete(uriSecurity, uriFirewall, uriPolicy, name)
 }
 
 // ModifyFirewallPolicy allows you to change any attribute of a Firewall policy.
 // Fields that can be modified are referenced in the FirewallPolicy struct.
 func (b *BigIP) ModifyFirewallPolicy(name string, config *FirewallPolicy) error {
-	return b.patch(config, uriSecurity, uriFirewallPolicy, uriWafPol, name)
+	return b.patch(config, uriSecurity, uriFirewall, uriPolicy, name)
 }
 
 // IPIntelligencePolicies returns a list of IP Intelligence policies
 func (b *BigIP) IPIntelligencePolicies() (*IPIntelligencePolicies, error) {
 	var ipIntelligencePolicies IPIntelligencePolicies
-	err, _ := b.getForEntity(&ipIntelligencePolicies, uriSecurity, uriIPIntelligence)
+	err, _ := b.getForEntity(&ipIntelligencePolicies, uriSecurity, uriIPIntelligence, uriPolicy)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +298,7 @@ func (b *BigIP) IPIntelligencePolicies() (*IPIntelligencePolicies, error) {
 // GetIPIntelligencePolicy gets an IP Intelligence policy by name. Returns nil if the policy does not exist
 func (b *BigIP) GetIPIntelligencePolicy(name string) (*IPIntelligencePolicy, error) {
 	var ipIntelligencePolicy IPIntelligencePolicy
-	err, ok := b.getForEntity(&ipIntelligencePolicy, uriSecurity, uriIPIntelligence, name)
+	err, ok := b.getForEntity(&ipIntelligencePolicy, uriSecurity, uriIPIntelligence, uriPolicy, name)
 	if err != nil {
 		return nil, err
 	}
@@ -318,24 +312,24 @@ func (b *BigIP) GetIPIntelligencePolicy(name string) (*IPIntelligencePolicy, err
 
 // AddIPIntelligencePolicy creates a new IP Intelligence policy on the BIG-IP system.
 func (b *BigIP) AddIPIntelligencePolicy(config *IPIntelligencePolicy) error {
-	return b.post(config, uriSecurity, uriIPIntelligence)
+	return b.post(config, uriSecurity, uriIPIntelligence, uriPolicy)
 }
 
 // DeleteIPIntelligencePolicy removes an IP Intelligence policy.
 func (b *BigIP) DeleteIPIntelligencePolicy(name string) error {
-	return b.delete(uriSecurity, uriIPIntelligence, name)
+	return b.delete(uriSecurity, uriIPIntelligence, uriPolicy, name)
 }
 
 // ModifyIPIntelligencePolicy allows you to change any attribute of an IP Intelligence policy.
 // Fields that can be modified are referenced in the IPIntelligencePolicy struct.
 func (b *BigIP) ModifyIPIntelligencePolicy(name string, config *IPIntelligencePolicy) error {
-	return b.patch(config, uriSecurity, uriIPIntelligence, name)
+	return b.patch(config, uriSecurity, uriIPIntelligence, uriPolicy, name)
 }
 
 // SecurityLogProfiles returns a list of Security Log profiles
 func (b *BigIP) SecurityLogProfiles() (*SecurityLogProfiles, error) {
 	var securityLogProfiles SecurityLogProfiles
-	err, _ := b.getForEntity(&securityLogProfiles, uriSecurity, uriLogProfile)
+	err, _ := b.getForEntity(&securityLogProfiles, uriSecurity, uriLog, uriProfile)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +340,7 @@ func (b *BigIP) SecurityLogProfiles() (*SecurityLogProfiles, error) {
 // GetSecurityLogProfile gets a Security Log profile by name. Returns nil if the profile does not exist
 func (b *BigIP) GetSecurityLogProfile(name string) (*SecurityLogProfile, error) {
 	var securityLogProfile SecurityLogProfile
-	err, ok := b.getForEntity(&securityLogProfile, uriSecurity, uriLogProfile, name)
+	err, ok := b.getForEntity(&securityLogProfile, uriSecurity, uriLog, uriProfile, name)
 	if err != nil {
 		return nil, err
 	}
@@ -360,16 +354,16 @@ func (b *BigIP) GetSecurityLogProfile(name string) (*SecurityLogProfile, error) 
 
 // AddSecurityLogProfile creates a new Security Log profile on the BIG-IP system.
 func (b *BigIP) AddSecurityLogProfile(config *SecurityLogProfile) error {
-	return b.post(config, uriSecurity, uriLogProfile)
+	return b.post(config, uriSecurity, uriLog, uriProfile)
 }
 
 // DeleteSecurityLogProfile removes a Security Log profile.
 func (b *BigIP) DeleteSecurityLogProfile(name string) error {
-	return b.delete(uriSecurity, uriLogProfile, name)
+	return b.delete(uriSecurity, uriLog, uriProfile, name)
 }
 
 // ModifySecurityLogProfile allows you to change any attribute of a Security Log profile.
 // Fields that can be modified are referenced in the SecurityLogProfile struct.
 func (b *BigIP) ModifySecurityLogProfile(name string, config *SecurityLogProfile) error {
-	return b.patch(config, uriSecurity, uriLogProfile, name)
+	return b.patch(config, uriSecurity, uriLog, uriProfile, name)
 }
