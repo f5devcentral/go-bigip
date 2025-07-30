@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -160,33 +159,24 @@ func NewTokenSession(bigipConfig *Config) (b *BigIP, err error) {
 	type timeoutReq struct {
 		Timeout int64 `json:"timeout"`
 	}
-
 	if bigipConfig.LoginReference == "" {
-		logInfo("LoginProviderName not set, defaulting to 'tmos'")
 		bigipConfig.LoginReference = "tmos"
-	} else {
-		logInfo("Using LoginProviderName: %s", bigipConfig.LoginReference)
 	}
 	auth := authReq{
 		bigipConfig.Username,
 		bigipConfig.Password,
 		bigipConfig.LoginReference,
 	}
-	logDebug("Auth request: %+v", auth)
-
 	marshalJSONauth, err := json.Marshal(auth)
 	if err != nil {
-		logError("Failed to marshal auth request: %v", err)
 		return
 	}
-
 	req := &APIRequest{
 		Method:      "post",
 		URL:         "mgmt/shared/authn/login",
 		Body:        string(marshalJSONauth),
 		ContentType: "application/json",
 	}
-	logDebug("APIRequest: %+v", req)
 
 	b = NewSession(bigipConfig)
 	if !bigipConfig.CertVerifyDisable {
@@ -209,7 +199,6 @@ func NewTokenSession(bigipConfig *Config) (b *BigIP, err error) {
 		b.Transport.TLSClientConfig.RootCAs = rootCAs
 	}
 	resp, err := b.APICall(req)
-	logDebug("APIResponse: %s", string(resp))
 	if err != nil {
 		return
 	}
@@ -223,15 +212,6 @@ func NewTokenSession(bigipConfig *Config) (b *BigIP, err error) {
 	err = json.Unmarshal(resp, &aresp)
 	if err != nil {
 		return
-	}
-
-	// Use authResp struct to detect BIG-IQ
-	if aresp.RefreshToken != nil {
-		logInfo("Detected BIG-IQ platform (RefreshToken present in authResp)")
-		// Optionally: b.Platform = "BIG-IQ"
-	} else {
-		logInfo("Detected BIG-IP platform (RefreshToken absent in authResp)")
-		// Optionally: b.Platform = "BIG-IP"
 	}
 
 	if aresp.Token.Token == "" {
@@ -633,8 +613,6 @@ func (b *BigIP) getForEntity(e interface{}, path ...string) (error, bool) {
 
 	resp, err := b.APICall(req)
 	// add log for debugging
-	logDebug("APIRequest: %+v", req)
-	logDebug("APIResponse: %s", string(resp))
 	// If we get an error, we need to check if it is a 404 error.
 	// check error code and response body
 
@@ -756,19 +734,4 @@ func toBoolString(b bool, trueStr, falseStr string) string {
 		return trueStr
 	}
 	return falseStr
-}
-
-// Logging helpers
-func logDebug(format string, v ...interface{}) {
-	if os.Getenv("LOG_LEVEL") == "DEBUG" {
-		log.Printf("[DEBUG] "+format, v...)
-	}
-}
-func logInfo(format string, v ...interface{}) {
-	if os.Getenv("LOG_LEVEL") == "INFO" || os.Getenv("LOG_LEVEL") == "DEBUG" {
-		log.Printf("[INFO] "+format, v...)
-	}
-}
-func logError(format string, v ...interface{}) {
-	log.Printf("[ERROR] "+format, v...)
 }
