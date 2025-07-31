@@ -1,13 +1,13 @@
 package bigip
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"io/ioutil"
 )
 
 type NetTestSuite struct {
@@ -21,7 +21,7 @@ type NetTestSuite struct {
 
 func (s *NetTestSuite) SetupSuite() {
 	s.Server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := ioutil.ReadAll(r.Body)
+		body, _ := io.ReadAll(r.Body)
 		s.LastRequestBody = string(body)
 		s.LastRequest = r
 		if s.ResponseFunc != nil {
@@ -29,7 +29,7 @@ func (s *NetTestSuite) SetupSuite() {
 		}
 	}))
 
-	s.Client = NewSession(s.Server.URL, "", "", "", nil)
+	s.Client = NewSession(&Config{Address: s.Server.URL})
 }
 
 func (s *NetTestSuite) TearDownSuite() {
@@ -131,7 +131,8 @@ func (s *NetTestSuite) TestSelfIPs() {
 }
 
 func (s *NetTestSuite) TestCreateSelfIP() {
-	err := s.Client.CreateSelfIP("0.0.0.0", "0.0.0.0/20", "vlan")
+	ip := &SelfIP{Name: "0.0.0.0", Address: "0.0.0.0/20", Vlan: "vlan"}
+	err := s.Client.CreateSelfIP(ip)
 
 	assert.Nil(s.T(), err)
 	assertRestCall(s, "POST", "/mgmt/tm/net/self", `{"name":"0.0.0.0","address":"0.0.0.0/20", "vlan":"vlan"}`)
@@ -243,7 +244,9 @@ func (s *NetTestSuite) TestVlans() {
 }
 
 func (s *NetTestSuite) TestCreateVLan() {
-	err := s.Client.CreateVlan("name", 1)
+	vlan := &Vlan{Name: "name", Tag: 1}
+	// SFlow field uses the zero value (empty struct)
+	err := s.Client.CreateVlan(vlan)
 
 	assert.Nil(s.T(), err)
 	assertRestCall(s, "POST", "/mgmt/tm/net/vlan", `{"name":"name", "tag":1, "sflow":{}}`)
@@ -295,7 +298,8 @@ func (s *NetTestSuite) TestRoutes() {
 }
 
 func (s *NetTestSuite) TestCreateRoute() {
-	err := s.Client.CreateRoute("default_route", "default", "0.0.0.0")
+	route := &Route{Name: "default_route", Network: "default", Gateway: "0.0.0.0"}
+	err := s.Client.CreateRoute(route)
 
 	assert.Nil(s.T(), err)
 	assertRestCall(s, "POST", "/mgmt/tm/net/route", `{"name":"default_route", "network":"default", "gw":"0.0.0.0"}`)

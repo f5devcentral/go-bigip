@@ -153,29 +153,24 @@ func NewTokenSession(bigipConfig *Config) (b *BigIP, err error) {
 		Timeout struct {
 			Timeout int64
 		}
+		RefreshToken interface{} `json:"refreshToken,omitempty"`
 	}
 
 	type timeoutReq struct {
 		Timeout int64 `json:"timeout"`
 	}
-
-	// type timeoutResp struct {
-	// 	Timeout struct {
-	// 		Timeout int64
-	// 	}
-	// }
-
+	if bigipConfig.LoginReference == "" {
+		bigipConfig.LoginReference = "tmos"
+	}
 	auth := authReq{
 		bigipConfig.Username,
 		bigipConfig.Password,
 		bigipConfig.LoginReference,
 	}
-
 	marshalJSONauth, err := json.Marshal(auth)
 	if err != nil {
 		return
 	}
-
 	req := &APIRequest{
 		Method:      "post",
 		URL:         "mgmt/shared/authn/login",
@@ -227,7 +222,7 @@ func NewTokenSession(bigipConfig *Config) (b *BigIP, err error) {
 	b.Token = aresp.Token.Token
 
 	//Once we have obtained a token, we should actually apply the configured timeout to it
-	if time.Duration(aresp.Timeout.Timeout)*time.Second != bigipConfig.ConfigOptions.TokenTimeout { // The inital value is the max timespan
+	if aresp.RefreshToken == nil && time.Duration(aresp.Timeout.Timeout)*time.Second != bigipConfig.ConfigOptions.TokenTimeout { // The inital value is the max timespan
 		timeout := timeoutReq{
 			int64(bigipConfig.ConfigOptions.TokenTimeout.Seconds()),
 		}
@@ -617,6 +612,10 @@ func (b *BigIP) getForEntity(e interface{}, path ...string) (error, bool) {
 	}
 
 	resp, err := b.APICall(req)
+	// add log for debugging
+	// If we get an error, we need to check if it is a 404 error.
+	// check error code and response body
+
 	if err != nil {
 		var reqError RequestError
 		json.Unmarshal(resp, &reqError)
