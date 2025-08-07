@@ -697,7 +697,11 @@ func marshal(to, from interface{}) error {
 		toField := toVal.Field(i)
 		toFieldType := toType.Field(i)
 		fromField := fromVal.FieldByName(toFieldType.Name)
-		if fromField.Interface() != nil && fromField.Kind() == toField.Kind() {
+		if !fromField.IsValid() {
+			// Skip missing fields in fromVal
+			continue
+		}
+		if fromField.IsValid() && fromField.Interface() != nil && fromField.Kind() == toField.Kind() {
 			toField.Set(fromField)
 		} else if toField.Kind() == reflect.Bool && fromField.Kind() == reflect.String {
 			switch fromField.Interface() {

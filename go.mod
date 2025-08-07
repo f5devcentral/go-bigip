@@ -1,4 +1,4 @@
-module github.com/f5devcentral/go-bigip
+module github.com/charanm08/go-bigip
 
 go 1.20
 
