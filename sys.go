@@ -283,6 +283,7 @@ func (p *LogPublisher) UnmarshalJSON(b []byte) error {
 }
 
 const (
+	uriMgmtRoute       = "management-route"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -1250,4 +1251,68 @@ func (b *BigIP) ModifyRoleInfo(name string, roleInfo *RoleInfo) error {
 
 func (b *BigIP) DeleteRoleInfo(name string) error {
 	return b.delete(uriAuth, uriRemoteRole, uriRoleInfo, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////               Management Route             /////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// ManagementRoutes represents a collection of BIG-IP management routes.
+type ManagementRoutes struct {
+	ManagementRoutes []ManagementRoute `json:"items"`
+}
+
+// ManagementRoute represents a BIG-IP management route configuration.
+type ManagementRoute struct {
+	Name        string `json:"name,omitempty"`
+	FullPath    string `json:"fullPath,omitempty"`
+	Gateway     string `json:"gateway,omitempty"`
+	MTU         int    `json:"mtu,omitempty"`
+	Network     string `json:"network,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// GetManagementRoutes returns a list of management routes.
+func (b *BigIP) GetManagementRoutes() (*ManagementRoutes, error) {
+	var mgmtroute ManagementRoutes
+	err, ok := b.getForEntity(&mgmtroute, uriSys, uriMgmtRoute)
+	if err != nil {
+		if !ok {
+			return &ManagementRoutes{}, nil
+		}
+		return nil, err
+	}
+
+	return &mgmtroute, nil
+}
+
+// GetManagementRoute returns a named Management Route.
+func (b *BigIP) GetManagementRoute(managementroute string) (*ManagementRoute, error) {
+	var mgmtroute ManagementRoute
+	err, ok := b.getForEntity(&mgmtroute, uriSys, uriMgmtRoute, managementroute)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &mgmtroute, nil
+}
+
+// CreateManagementRoute adds a new management route to the BIG-IP system. <dest> must include the
+// subnet mask in CIDR notation, i.e.: "10.1.1.0/24".
+func (b *BigIP) CreateManagementRoute(config *ManagementRoute) error {
+	return b.post(config, uriSys, uriMgmtRoute)
+}
+
+// DeleteManagementRoute removes a management route.
+func (b *BigIP) DeleteManagementRoute(name string) error {
+	return b.delete(uriSys, uriMgmtRoute, name)
+}
+
+// ModifyManagementRoute allows for a change of any attribute of a management route. Fields that
+// can be modified are referenced in the ManagementRoute struct.
+func (b *BigIP) ModifyManagementRoute(name string, config *ManagementRoute) error {
+	return b.put(config, uriSys, uriMgmtRoute, name)
 }
