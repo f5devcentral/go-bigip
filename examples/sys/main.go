@@ -36,7 +36,8 @@ func main() {
 	mgmtRouteTesting := false
 	mgmtFwRuleTesting := false
 	remoteRoleTesting := false
-	ldapAuthTesting := true
+	ldapAuthTesting := false
+	authSourceTesting := true
 
 	if mgmtRouteTesting {
 		testManagementRouteCreation(f5)
@@ -73,6 +74,15 @@ func main() {
 		testLdapAuthRead(f5)
 		testLdapAuthDelete(f5)
 		testLdapAuthRead(f5)
+	}
+	if authSourceTesting {
+		testAuthSourceRead(f5)
+		testAuthSourceCreate(f5)
+		testAuthSourceRead(f5)
+		testAuthSourceUpdate(f5)
+		testAuthSourceRead(f5)
+		testAuthSourceDelete(f5)
+		testAuthSourceRead(f5)
 	}
 
 }

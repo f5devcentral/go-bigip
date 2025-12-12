@@ -288,6 +288,7 @@ const (
 	uriMgmtIpRules     = "management-ip-rules"
 	uriRules           = "rules"
 	uriLdap            = "ldap"
+	uriAuthSrc         = "source"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -1592,4 +1593,47 @@ func (b *BigIP) ModifyLdapConfig(name string, config *LdapConfig) error {
 // DeleteLdapConfig removes an LDAP authentication configuration.
 func (b *BigIP) DeleteLdapConfig(name string) error {
 	return b.delete(uriAuth, uriLdap, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////          Authentication Source              ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// AuthSource represents authentication source used to access BIGIP system.
+type AuthSource struct {
+	Fallback string `json:"fallback,omitempty"`
+	Type     string `json:"type,omitempty"`
+}
+
+// GetAuthSource retrieves the current authentication source configuration.
+func (b *BigIP) GetAuthSource() (*AuthSource, error) {
+	var authSource AuthSource
+	err, ok := b.getForEntity(&authSource, uriAuth, uriAuthSrc)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &authSource, nil
+}
+
+// CreateAuthSource sets the authentication source configuration.
+func (b *BigIP) CreateAuthSource(config *AuthSource) error {
+	return b.patch(config, uriAuth, uriAuthSrc)
+}
+
+// ModifyAuthSource updates the authentication source configuration.
+func (b *BigIP) ModifyAuthSource(config *AuthSource) error {
+	return b.patch(config, uriAuth, uriAuthSrc)
+}
+
+// DeleteAuthSource resets the authentication source to default values.
+func (b *BigIP) DeleteAuthSource() error {
+	defaultConfig := &AuthSource{
+		Type:     "local",
+		Fallback: "false",
+	}
+	return b.patch(defaultConfig, uriAuth, uriAuthSrc)
 }
