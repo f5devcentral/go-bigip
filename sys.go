@@ -287,6 +287,7 @@ const (
 	uriMgmtRoute       = "management-route"
 	uriMgmtIpRules     = "management-ip-rules"
 	uriRules           = "rules"
+	uriLdap            = "ldap"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -1510,4 +1511,85 @@ func (b *BigIP) ModifyRemoteRole(name string, config *RemoteRole) error {
 // DeleteRemoteRole removes a remote role configuration.
 func (b *BigIP) DeleteRemoteRole(name string) error {
 	return b.delete(uriAuth, uriRemoteRole, uriRoleInfo, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////            LDAP Authentication              ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// LDAPConfig represents LDAP configuration used for authentication to BIGIP system.
+type LdapConfig struct {
+	Name                  string   `json:"name,omitempty" validate:"eq=system-auth"`
+	BindDn                string   `json:"bindDn,omitempty"`
+	BindPw                string   `json:"bindPw,omitempty"`
+	BindTimeout           int      `json:"bindTimeout,omitempty"`
+	CheckHostAttr         string   `json:"checkHostAttr,omitempty"`
+	CheckRolesGroup       string   `json:"checkRolesGroup,omitempty"`
+	Debug                 string   `json:"debug,omitempty"`
+	Filter                string   `json:"filter,omitempty"`
+	GroupDn               string   `json:"groupDn,omitempty"`
+	GroupMemberAttribute  string   `json:"groupMemberAttribute,omitempty"`
+	IdleTimeout           int      `json:"idleTimeout,omitempty"`
+	IgnoreAuthInfoUnavail string   `json:"ignoreAuthInfoUnavail,omitempty"`
+	IgnoreUnknownUser     string   `json:"ignoreUnknownUser,omitempty"`
+	LoginAttribute        string   `json:"loginAttribute,omitempty"`
+	Port                  int      `json:"port,omitempty"`
+	Referrals             string   `json:"referrals,omitempty"`
+	Scope                 string   `json:"scope,omitempty"`
+	SearchBaseDn          string   `json:"searchBaseDn,omitempty"`
+	SearchTimeout         int      `json:"searchTimeout,omitempty"`
+	Servers               []string `json:"servers,omitempty"`
+	Ssl                   string   `json:"ssl,omitempty"`
+	SslCaCertFile         string   `json:"sslCaCertFile,omitempty"`
+	SslCheckPeer          string   `json:"sslCheckPeer,omitempty"`
+	SslCiphers            string   `json:"sslCiphers,omitempty"`
+	SslClientCert         string   `json:"sslClientCert,omitempty"`
+	SslClientKey          string   `json:"sslClientKey,omitempty"`
+	UserTemplate          string   `json:"userTemplate,omitempty"`
+	Version               int      `json:"version,omitempty"`
+	Warnings              string   `json:"warnings,omitempty"`
+}
+
+// GetLdapConfig returns a named LDAP authentication configuration.
+func (b *BigIP) GetLdapConfig(name string) (*LdapConfig, error) {
+	var ldapConfig LdapConfig
+	err, ok := b.getForEntity(&ldapConfig, uriAuth, uriLdap, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &ldapConfig, nil
+}
+
+func validateLdapConfig(config *LdapConfig) error {
+	if len(config.Servers) == 0 {
+		return errors.New("servers is required option, at least one LDAP server must be specified")
+	}
+	if config.Name != "" && config.Name != "system-auth" {
+		return errors.New("name must be 'system-auth'")
+	}
+	return nil
+}
+
+// CreateLdapConfig adds a new LDAP authentication configuration to the BIG-IP system.
+// BIG-IP only allows the name "system-auth" for LDAP configurations
+func (b *BigIP) CreateLdapConfig(config *LdapConfig) error {
+	err := validateLdapConfig(config)
+	if err != nil {
+		return err
+	}
+	return b.post(config, uriAuth, uriLdap)
+}
+
+// ModifyLdapConfig allows for a change of attribute in LDAP configuration
+func (b *BigIP) ModifyLdapConfig(name string, config *LdapConfig) error {
+	return b.patch(config, uriAuth, uriLdap, name)
+}
+
+// DeleteLdapConfig removes an LDAP authentication configuration.
+func (b *BigIP) DeleteLdapConfig(name string) error {
+	return b.delete(uriAuth, uriLdap, name)
 }
