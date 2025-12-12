@@ -12,6 +12,7 @@ package bigip
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -284,6 +285,8 @@ func (p *LogPublisher) UnmarshalJSON(b []byte) error {
 
 const (
 	uriMgmtRoute       = "management-route"
+	uriMgmtIpRules     = "management-ip-rules"
+	uriRules           = "rules"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -1315,4 +1318,116 @@ func (b *BigIP) DeleteManagementRoute(name string) error {
 // can be modified are referenced in the ManagementRoute struct.
 func (b *BigIP) ModifyManagementRoute(name string, config *ManagementRoute) error {
 	return b.put(config, uriSys, uriMgmtRoute, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////          Management Firewall Rule          /////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// MgmtFirewallRules represents a collection of BIG-IP management firewall rules.
+type MgmtFirewallRules struct {
+	MgmtFirewallRules []MgmtFirewallRule `json:"items"`
+}
+
+// MgmtFwRuleAddress represents an IP address or address range for firewall matching.
+type MgmtFwRuleAddress struct {
+	Name string `json:"name,omitempty"`
+}
+
+// MgmtFwRulePort represents a port or port range for firewall matching.
+type MgmtFwRulePort struct {
+	Name string `json:"name,omitempty"`
+}
+
+// MgmtFwRuleICMP represents an ICMP type and code specification for firewall rules.
+// Format is "type:code" (e.g., "3:1" for destination unreachable / host unreachable).
+type MgmtFwRuleICMP struct {
+	Name string `json:"name,omitempty"`
+}
+
+// MgmtFwRuleIpPortData contains source or destination IP and port matching criteria for firewall rules.
+type MgmtFwRuleIpPortData struct {
+	AddressLists []string            `json:"addressLists,omitempty"`
+	Addresses    []MgmtFwRuleAddress `json:"addresses,omitzero"`
+	PortLists    []string            `json:"portLists,omitempty"`
+	Ports        []MgmtFwRulePort    `json:"ports,omitzero"`
+}
+
+// MgmtFirewallRule represents a BIG-IP management firewall rule configuration.
+// These rules control access to the management interface.
+type MgmtFirewallRule struct {
+	Name        string               `json:"name,omitempty"`
+	FullPath    string               `json:"fullPath,omitempty"`
+	Description string               `json:"description,omitempty"`
+	UUID        string               `json:"uuid,omitempty"`
+	Action      string               `json:"action,omitempty" validate:"oneof=accept drop reject"`
+	IpProtocol  string               `json:"ipProtocol,omitempty"`
+	Log         string               `json:"log,omitempty" validate:"oneof=yes no"`
+	PlaceAfter  string               `json:"placeAfter,omitempty"`
+	PlaceBefore string               `json:"placeBefore,omitempty"`
+	Status      string               `json:"status,omitempty"`
+	Schedule    string               `json:"schedule,omitempty"`
+	Destination MgmtFwRuleIpPortData `json:"destination,omitempty"`
+	Source      MgmtFwRuleIpPortData `json:"source,omitempty"`
+	ICMPs       []MgmtFwRuleICMP     `json:"icmp,omitzero"`
+}
+
+func validateMgmtRulePlacing(config *MgmtFirewallRule) error {
+	hasAfter := config.PlaceAfter != ""
+	hasBefore := config.PlaceBefore != ""
+
+	if hasAfter && hasBefore {
+		return errors.New("cannot set both 'PlaceAfter' and 'PlaceBefore', choose one")
+	}
+	if !hasAfter && !hasBefore {
+		return errors.New("must set either 'PlaceAfter' or 'PlaceBefore' for rule placement")
+	}
+	return nil
+}
+
+// GetManagementFwRules returns a list of management firewall rules.
+func (b *BigIP) GetManagementFwRules() (*MgmtFirewallRules, error) {
+	var mgmtfwrules MgmtFirewallRules
+	err, ok := b.getForEntity(&mgmtfwrules, uriSecurity, uriFirewall, uriMgmtIpRules, uriRules)
+	if err != nil {
+		if !ok {
+			return &MgmtFirewallRules{}, nil
+		}
+		return nil, err
+	}
+
+	return &mgmtfwrules, nil
+}
+
+// GetManagementFwRule returns a named Management Firewall Rule.
+func (b *BigIP) GetManagementFwRule(name string) (*MgmtFirewallRule, error) {
+	var mgmtfwrule MgmtFirewallRule
+	err, ok := b.getForEntity(&mgmtfwrule, uriSecurity, uriFirewall, uriMgmtIpRules, uriRules, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &mgmtfwrule, nil
+}
+
+// CreateManagementFwRule adds a new management firewall rule to the BIG-IP system.
+func (b *BigIP) CreateManagementFwRule(config *MgmtFirewallRule) error {
+	err := validateMgmtRulePlacing(config)
+	if err != nil {
+		return err
+	}
+	return b.post(config, uriSecurity, uriFirewall, uriMgmtIpRules, uriRules)
+}
+
+// ModifyManagementFwRule allows you to change any attribute of a management firewall rule.
+func (b *BigIP) ModifyManagementFwRule(name string, config *MgmtFirewallRule) error {
+	return b.put(config, uriSecurity, uriFirewall, uriMgmtIpRules, uriRules, name)
+}
+
+// DeleteManagementFwRule removes a management firewall rule.
+func (b *BigIP) DeleteManagementFwRule(name string) error {
+	return b.delete(uriSecurity, uriFirewall, uriMgmtIpRules, uriRules, name)
 }

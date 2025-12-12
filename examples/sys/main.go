@@ -34,6 +34,7 @@ func main() {
 	f5 := bigip.NewSession(config)
 
 	mgmtRouteTesting := false
+	mgmtFwRuleTesting := true
 
 	if mgmtRouteTesting {
 		testManagementRouteCreation(f5)
@@ -42,6 +43,16 @@ func main() {
 		testManagementRouteRead(f5)
 		testManagementRouteDelete(f5)
 		testManagementRouteRead(f5)
+	}
+
+	if mgmtFwRuleTesting {
+		testManagementFwRulesRead(f5)
+		testManagementFwRuleCreation(f5)
+		testManagementFwRulesRead(f5)
+		testManagementFwRuleModify(f5)
+		testManagementFwRulesRead(f5)
+		testManagementFwRuleDelete(f5)
+		testManagementFwRulesRead(f5)
 	}
 
 }
