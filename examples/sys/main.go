@@ -34,7 +34,8 @@ func main() {
 	f5 := bigip.NewSession(config)
 
 	mgmtRouteTesting := false
-	mgmtFwRuleTesting := true
+	mgmtFwRuleTesting := false
+	remoteRoleTesting := true
 
 	if mgmtRouteTesting {
 		testManagementRouteCreation(f5)
@@ -53,6 +54,15 @@ func main() {
 		testManagementFwRulesRead(f5)
 		testManagementFwRuleDelete(f5)
 		testManagementFwRulesRead(f5)
+	}
+	if remoteRoleTesting {
+		testRemoteRoleRead(f5)
+		testRemoteRoleCreation(f5)
+		testRemoteRoleRead(f5)
+		testRemoteRoleUpdate(f5)
+		testRemoteRoleRead(f5)
+		testRemoteRoleDelete(f5)
+		testRemoteRoleRead(f5)
 	}
 
 }

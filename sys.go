@@ -1431,3 +1431,83 @@ func (b *BigIP) ModifyManagementFwRule(name string, config *MgmtFirewallRule) er
 func (b *BigIP) DeleteManagementFwRule(name string) error {
 	return b.delete(uriSecurity, uriFirewall, uriMgmtIpRules, uriRules, name)
 }
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////        Authentication - Remote Role         ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// RemoteRoles represent a collection of the user roles on the BIGIP system.
+type RemoteRoles struct {
+	RemoteRoles []RemoteRole `json:"items"`
+}
+
+// // RemoteRoles represents a specific user role on the BIGIP system.
+type RemoteRole struct {
+	Name          string `json:"name,omitempty"`
+	FullPath      string `json:"fullPath,omitempty"`
+	Generation    int    `json:"generation,omitempty"`
+	Attribute     string `json:"attribute,omitempty"`
+	Console       string `json:"console,omitempty"`
+	Deny          string `json:"deny,omitempty"`
+	Description   string `json:"description,omitempty"`
+	LineOrder     int    `json:"lineOrder,omitempty"`
+	Role          string `json:"role,omitempty"`
+	UserPartition string `json:"userPartition,omitempty"`
+}
+
+// GetRemoteRoles returns a list of all remote role configurations.
+func (b *BigIP) GetRemoteRoles() (*RemoteRoles, error) {
+	var remoteRoles RemoteRoles
+	err, ok := b.getForEntity(&remoteRoles, uriAuth, uriRemoteRole, uriRoleInfo)
+	if err != nil {
+		if !ok {
+			return &RemoteRoles{}, nil
+		}
+		return nil, err
+	}
+
+	return &remoteRoles, nil
+}
+
+// GetRemoteRole returns a named remote role configuration.
+func (b *BigIP) GetRemoteRole(name string) (*RemoteRole, error) {
+	var remoteRole RemoteRole
+	err, ok := b.getForEntity(&remoteRole, uriAuth, uriRemoteRole, uriRoleInfo, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &remoteRole, nil
+}
+
+func validateRemoteRole(config *RemoteRole) error {
+	if config.Attribute == "" {
+		return errors.New("attribute is required (e.g., 'memberof=cn=group,dc=example,dc=com')")
+	}
+	if config.LineOrder == 0 {
+		return errors.New("lineOrder is required")
+	}
+	return nil
+}
+
+// CreateRemoteRole adds a new remote role configuration to the BIG-IP system.
+func (b *BigIP) CreateRemoteRole(config *RemoteRole) error {
+	err := validateRemoteRole(config)
+	if err != nil {
+		return err
+	}
+	return b.post(config, uriAuth, uriRemoteRole, uriRoleInfo)
+}
+
+// ModifyRemoteRole allows the update of the attributes.
+func (b *BigIP) ModifyRemoteRole(name string, config *RemoteRole) error {
+	return b.patch(config, uriAuth, uriRemoteRole, uriRoleInfo, name)
+}
+
+// DeleteRemoteRole removes a remote role configuration.
+func (b *BigIP) DeleteRemoteRole(name string) error {
+	return b.delete(uriAuth, uriRemoteRole, uriRoleInfo, name)
+}
