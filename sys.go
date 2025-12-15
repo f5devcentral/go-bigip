@@ -91,74 +91,6 @@ type Provision struct {
 	MemoryRatio int    `json:"memoryRatio,omitempty"`
 }
 
-type Syslogs struct {
-	Syslogs []Syslog `json:"items"`
-}
-
-type Syslog struct {
-	AuthPrivFrom  string
-	RemoteServers []RemoteServer
-}
-
-type syslogDTO struct {
-	AuthPrivFrom  string `json:"authPrivFrom,omitempty"`
-	RemoteServers struct {
-		Items []RemoteServer `json:"items,omitempty"`
-	} `json:"remoteServers,omitempty"`
-}
-
-func (p *Syslog) MarshalJSON() ([]byte, error) {
-	var dto syslogDTO
-	return json.Marshal(dto)
-}
-
-func (p *Syslog) UnmarshalJSON(b []byte) error {
-	var dto syslogDTO
-	err := json.Unmarshal(b, &dto)
-	if err != nil {
-		return err
-	}
-
-	p.AuthPrivFrom = dto.AuthPrivFrom
-	p.RemoteServers = dto.RemoteServers.Items
-
-	return nil
-}
-
-type RemoteServer struct {
-	Name       string `json:"name,omitempty"`
-	Host       string `json:"host,omitempty"`
-	RemotePort int    `json:"remotePort,omitempty"`
-}
-
-type remoteServerDTO struct {
-	Name       string `json:"name,omitempty"`
-	Host       string `json:"host,omitempty"`
-	RemotePort int    `json:"remotePort,omitempty"`
-}
-
-func (p *RemoteServer) MarshalJSON() ([]byte, error) {
-	return json.Marshal(remoteServerDTO{
-		Name:       p.Name,
-		Host:       p.Host,
-		RemotePort: p.RemotePort,
-	})
-}
-
-func (p *RemoteServer) UnmarshalJSON(b []byte) error {
-	var dto remoteServerDTO
-	err := json.Unmarshal(b, &dto)
-	if err != nil {
-		return err
-	}
-
-	p.Name = dto.Name
-	p.Host = dto.Host
-	p.RemotePort = dto.RemotePort
-
-	return nil
-}
-
 type SNMPs struct {
 	SNMPs []SNMP `json:"items"`
 }
@@ -897,25 +829,6 @@ func (b *BigIP) Provisions(name string) (*Provision, error) {
 
 	log.Println("Display ****************** provision  ", provision)
 	return &provision, nil
-}
-
-func (b *BigIP) Syslogs() (*Syslog, error) {
-	var syslog Syslog
-	err, _ := b.getForEntity(&syslog, uriSys, uriSyslog)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &syslog, nil
-}
-
-func (b *BigIP) CreateSyslog(r *Syslog) error {
-	return b.patch(r, uriSys, uriSyslog)
-}
-
-func (b *BigIP) ModifySyslog(r *Syslog) error {
-	return b.put(r, uriSys, uriSyslog)
 }
 
 func (b *BigIP) CreateSNMP(sysContact string, sysLocation string, allowedAddresses []string) error {
@@ -1682,4 +1595,98 @@ func (b *BigIP) DeleteRemoteUser() error {
 		RemoteConsoleAccess: "disabled",
 	}
 	return b.patch(defaultConfig, uriAuth, uriRemoteUser)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////            System Syslog Configuration      ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// SyslogRemoteServer represents a remote syslog server configuration.
+type SyslogRemoteServer struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Host        string `json:"host,omitempty"`
+	LocalIp     string `json:"localIp,omitempty"`
+	RemotePort  int    `json:"remotePort,omitempty"`
+}
+
+// SyslogConfig represents the BIG-IP system syslog configuration.
+type SyslogConfig struct {
+	AuthPrivFrom         string               `json:"authPrivFrom,omitempty"`
+	AuthPrivTo           string               `json:"authPrivTo,omitempty"`
+	ClusteredHostSlot    string               `json:"clusteredHostSlot,omitempty"`
+	ClusteredMessageSlot string               `json:"clusteredMessageSlot,omitempty"`
+	ConsoleLog           string               `json:"consoleLog,omitempty"`
+	CronFrom             string               `json:"cronFrom,omitempty"`
+	CronTo               string               `json:"cronTo,omitempty"`
+	DaemonFrom           string               `json:"daemonFrom,omitempty"`
+	DaemonTo             string               `json:"daemonTo,omitempty"`
+	Description          string               `json:"description,omitempty"`
+	Include              string               `json:"include,omitempty"`
+	IsoDate              string               `json:"isoDate,omitempty"`
+	KernFrom             string               `json:"kernFrom,omitempty"`
+	KernTo               string               `json:"kernTo,omitempty"`
+	Local6From           string               `json:"local6From,omitempty"`
+	Local6To             string               `json:"local6To,omitempty"`
+	MailFrom             string               `json:"mailFrom,omitempty"`
+	MailTo               string               `json:"mailTo,omitempty"`
+	MessagesFrom         string               `json:"messagesFrom,omitempty"`
+	MessagesTo           string               `json:"messagesTo,omitempty"`
+	UserLogFrom          string               `json:"userLogFrom,omitempty"`
+	UserLogTo            string               `json:"userLogTo,omitempty"`
+	RemoteServers        []SyslogRemoteServer `json:"remoteServers,omitzero"`
+}
+
+// GetSyslogConfig retrieves the current system syslog configuration.
+func (b *BigIP) GetSyslogConfig() (*SyslogConfig, error) {
+	var syslogConfig SyslogConfig
+	err, ok := b.getForEntity(&syslogConfig, uriSys, uriSyslog)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &syslogConfig, nil
+}
+
+// CreateSyslogConfig sets the system syslog configuration.
+func (b *BigIP) CreateSyslogConfig(config *SyslogConfig) error {
+	return b.patch(config, uriSys, uriSyslog)
+}
+
+// ModifySyslogConfig updates the system syslog configuration.
+func (b *BigIP) ModifySyslogConfig(config *SyslogConfig) error {
+	return b.patch(config, uriSys, uriSyslog)
+}
+
+// DeleteSyslogConfig resets the system syslog configuration to default values.
+func (b *BigIP) DeleteSyslogConfig() error {
+	defaultConfig := &SyslogConfig{
+		AuthPrivFrom:         "notice",
+		AuthPrivTo:           "emerg",
+		ClusteredHostSlot:    "enabled",
+		ClusteredMessageSlot: "disabled",
+		ConsoleLog:           "enabled",
+		CronFrom:             "warning",
+		CronTo:               "emerg",
+		DaemonFrom:           "notice",
+		DaemonTo:             "emerg",
+		Description:          "none",
+		Include:              "none",
+		IsoDate:              "disabled",
+		KernFrom:             "debug",
+		KernTo:               "emerg",
+		Local6From:           "notice",
+		Local6To:             "emerg",
+		MailFrom:             "notice",
+		MailTo:               "emerg",
+		MessagesFrom:         "notice",
+		MessagesTo:           "warning",
+		UserLogFrom:          "notice",
+		UserLogTo:            "emerg",
+		RemoteServers:        []SyslogRemoteServer{},
+	}
+	return b.patch(defaultConfig, uriSys, uriSyslog)
 }

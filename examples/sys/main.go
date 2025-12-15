@@ -38,7 +38,8 @@ func main() {
 	remoteRoleTesting := false
 	ldapAuthTesting := false
 	authSourceTesting := false
-	remoteUserTesting := true
+	remoteUserTesting := false
+	syslogTesting := true
 
 	if mgmtRouteTesting {
 		testManagementRouteCreation(f5)
@@ -93,6 +94,15 @@ func main() {
 		testRemoteUserRead(f5)
 		testRemoteUserDelete(f5)
 		testRemoteUserRead(f5)
+	}
+	if syslogTesting {
+		testSyslogRead(f5)
+		testSyslogCreate(f5)
+		testSyslogRead(f5)
+		testSyslogUpdate(f5)
+		testSyslogRead(f5)
+		testSyslogDelete(f5)
+		testSyslogRead(f5)
 	}
 
 }
