@@ -289,6 +289,7 @@ const (
 	uriRules           = "rules"
 	uriLdap            = "ldap"
 	uriAuthSrc         = "source"
+	uriRemoteUser      = "remote-user"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -1636,4 +1637,49 @@ func (b *BigIP) DeleteAuthSource() error {
 		Fallback: "false",
 	}
 	return b.patch(defaultConfig, uriAuth, uriAuthSrc)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////            Authentication Remote User         //////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// RemoteUser represents the authorization data for external users
+type RemoteUser struct {
+	DefaultPartition    string `json:"defaultPartition,omitempty"`
+	DefaultRole         string `json:"defaultRole,omitempty"`
+	RemoteConsoleAccess string `json:"remoteConsoleAccess,omitempty"`
+}
+
+// GetRemoteUser retrieves the current remote user configuration.
+func (b *BigIP) GetRemoteUser() (*RemoteUser, error) {
+	var remoteUser RemoteUser
+	err, ok := b.getForEntity(&remoteUser, uriAuth, uriRemoteUser)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &remoteUser, nil
+}
+
+// CreateRemoteUser sets the remote user configuration.
+func (b *BigIP) CreateRemoteUser(config *RemoteUser) error {
+	return b.patch(config, uriAuth, uriRemoteUser)
+}
+
+// ModifyRemoteUser updates the remote user configuration.
+func (b *BigIP) ModifyRemoteUser(config *RemoteUser) error {
+	return b.patch(config, uriAuth, uriRemoteUser)
+}
+
+// DeleteRemoteUser resets the remote user configuration to default values.
+func (b *BigIP) DeleteRemoteUser() error {
+	defaultConfig := &RemoteUser{
+		DefaultPartition:    "all",
+		DefaultRole:         "no-access",
+		RemoteConsoleAccess: "disabled",
+	}
+	return b.patch(defaultConfig, uriAuth, uriRemoteUser)
 }
