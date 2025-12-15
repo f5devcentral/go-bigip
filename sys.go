@@ -224,6 +224,7 @@ const (
 	uriRemoteUser      = "remote-user"
 	uriGlobalSettings  = "global-settings"
 	uriSshd            = "sshd"
+	uriHttpd           = "httpd"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -1793,4 +1794,111 @@ func (b *BigIP) DeleteSSHDConfig() error {
 		Port:              22,
 	}
 	return b.patch(defaultConfig, uriSys, uriSshd)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////           HTTPD Configuration                ///////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// HTTPDConfig represents the BIG-IP HTTPD (HTTP daemon) configuration.
+type HTTPDConfig struct {
+	Allow                    []string `json:"allow,omitempty"`
+	AuthName                 string   `json:"authName,omitempty"`
+	AuthPamDashboardTimeout  string   `json:"authPamDashboardTimeout,omitempty"`
+	AuthPamIdleTimeout       int      `json:"authPamIdleTimeout,omitempty"`
+	AuthPamValidateIp        string   `json:"authPamValidateIp,omitempty"`
+	FastcgiTimeout           int      `json:"fastcgiTimeout,omitempty"`
+	FipsCipherVersion        int      `json:"fipsCipherVersion,omitempty"`
+	HostnameLookup           string   `json:"hostnameLookup,omitempty"`
+	Include                  string   `json:"include,omitempty"`
+	LogLevel                 string   `json:"logLevel,omitempty"`
+	MaxClients               int      `json:"maxClients,omitempty"`
+	RedirectHttpToHttps      string   `json:"redirectHttpToHttps,omitempty"`
+	RequestBodyMaxTimeout    int      `json:"requestBodyMaxTimeout,omitempty"`
+	RequestBodyMinRate       int      `json:"requestBodyMinRate,omitempty"`
+	RequestBodyTimeout       int      `json:"requestBodyTimeout,omitempty"`
+	RequestHeaderMaxTimeout  int      `json:"requestHeaderMaxTimeout,omitempty"`
+	RequestHeaderMinRate     int      `json:"requestHeaderMinRate,omitempty"`
+	RequestHeaderTimeout     int      `json:"requestHeaderTimeout,omitempty"`
+	SslCaCertFile            string   `json:"sslCaCertFile,omitempty"`
+	SslCertchainfile         string   `json:"sslCertchainfile,omitempty"`
+	SslCertfile              string   `json:"sslCertfile,omitempty"`
+	SslCertkeyfile           string   `json:"sslCertkeyfile,omitempty"`
+	SslCiphersuite           string   `json:"sslCiphersuite,omitempty"`
+	SslInclude               string   `json:"sslInclude,omitempty"`
+	SslOcspDefaultResponder  string   `json:"sslOcspDefaultResponder,omitempty"`
+	SslOcspEnable            string   `json:"sslOcspEnable,omitempty"`
+	SslOcspOverrideResponder string   `json:"sslOcspOverrideResponder,omitempty"`
+	SslOcspResponderTimeout  int      `json:"sslOcspResponderTimeout,omitempty"`
+	SslOcspResponseMaxAge    int      `json:"sslOcspResponseMaxAge,omitempty"`
+	SslOcspResponseTimeSkew  int      `json:"sslOcspResponseTimeSkew,omitempty"`
+	SslPort                  int      `json:"sslPort,omitempty"`
+	SslProtocol              string   `json:"sslProtocol,omitempty"`
+	SslVerifyClient          string   `json:"sslVerifyClient,omitempty"`
+	SslVerifyDepth           int      `json:"sslVerifyDepth,omitempty"`
+}
+
+// GetHTTPDConfig retrieves the current HTTPD configuration.
+func (b *BigIP) GetHTTPDConfig() (*HTTPDConfig, error) {
+	var httpdConfig HTTPDConfig
+	err, ok := b.getForEntity(&httpdConfig, uriSys, uriHttpd)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &httpdConfig, nil
+}
+
+// CreateHTTPDConfig sets the HTTPD configuration.
+func (b *BigIP) CreateHTTPDConfig(config *HTTPDConfig) error {
+	return b.patch(config, uriSys, uriHttpd)
+}
+
+// ModifyHTTPDConfig updates the HTTPD configuration.
+func (b *BigIP) ModifyHTTPDConfig(config *HTTPDConfig) error {
+	return b.patch(config, uriSys, uriHttpd)
+}
+
+// DeleteHTTPDConfig resets the HTTPD configuration to default values.
+func (b *BigIP) DeleteHTTPDConfig() error {
+	defaultConfig := &HTTPDConfig{
+		Allow:                    []string{"All"},
+		AuthName:                 "BIG-IP",
+		AuthPamDashboardTimeout:  "off",
+		AuthPamIdleTimeout:       1200,
+		AuthPamValidateIp:        "on",
+		FastcgiTimeout:           300,
+		FipsCipherVersion:        0,
+		HostnameLookup:           "off",
+		Include:                  "none",
+		LogLevel:                 "warn",
+		MaxClients:               10,
+		RedirectHttpToHttps:      "disabled",
+		RequestBodyMaxTimeout:    0,
+		RequestBodyMinRate:       500,
+		RequestBodyTimeout:       60,
+		RequestHeaderMaxTimeout:  40,
+		RequestHeaderMinRate:     500,
+		RequestHeaderTimeout:     20,
+		SslCaCertFile:            "none",
+		SslCertchainfile:         "none",
+		SslCertfile:              "/etc/httpd/conf/ssl.crt/server.crt",
+		SslCertkeyfile:           "/etc/httpd/conf/ssl.key/server.key",
+		SslCiphersuite:           "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA384:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA:AES256-SHA:AES128-SHA256:AES256-SHA256",
+		SslInclude:               "none",
+		SslOcspDefaultResponder:  "http://127.0.0.1",
+		SslOcspEnable:            "off",
+		SslOcspOverrideResponder: "off",
+		SslOcspResponderTimeout:  300,
+		SslOcspResponseMaxAge:    -1,
+		SslOcspResponseTimeSkew:  300,
+		SslPort:                  443,
+		SslProtocol:              "all -SSLv2 -SSLv3 -TLSv1",
+		SslVerifyClient:          "no",
+		SslVerifyDepth:           10,
+	}
+	return b.patch(defaultConfig, uriSys, uriHttpd)
 }
