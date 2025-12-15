@@ -222,6 +222,7 @@ const (
 	uriLdap            = "ldap"
 	uriAuthSrc         = "source"
 	uriRemoteUser      = "remote-user"
+	uriGlobalSettings  = "global-settings"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -1689,4 +1690,50 @@ func (b *BigIP) DeleteSyslogConfig() error {
 		RemoteServers:        []SyslogRemoteServer{},
 	}
 	return b.patch(defaultConfig, uriSys, uriSyslog)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////         System Global Settings              ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// GlobalSettings represents the BIG-IP system global settings configuration.
+// Only a subset of attributes has been implemented.
+type GlobalSettings struct {
+	GuiSecurityBanner     string `json:"guiSecurityBanner,omitempty"`
+	GuiSecurityBannerText string `json:"guiSecurityBannerText,omitempty"`
+	Hostname              string `json:"hostname,omitempty"`
+}
+
+// GetGlobalSettings retrieves the current system global settings configuration.
+func (b *BigIP) GetGlobalSettings() (*GlobalSettings, error) {
+	var globalSettings GlobalSettings
+	err, ok := b.getForEntity(&globalSettings, uriSys, uriGlobalSettings)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &globalSettings, nil
+}
+
+// CreateGlobalSettings sets the system global settings configuration using PATCH.
+func (b *BigIP) CreateGlobalSettings(config *GlobalSettings) error {
+	return b.patch(config, uriSys, uriGlobalSettings)
+}
+
+// ModifyGlobalSettings updates the system global settings configuration.
+func (b *BigIP) ModifyGlobalSettings(config *GlobalSettings) error {
+	return b.patch(config, uriSys, uriGlobalSettings)
+}
+
+// DeleteGlobalSettings resets the system global settings configuration to default values.
+func (b *BigIP) DeleteGlobalSettings() error {
+	defaultConfig := &GlobalSettings{
+		GuiSecurityBanner:     "enabled",
+		GuiSecurityBannerText: "Welcome to the BIG-IP Configuration Utility.\n\nLog in with your username and password using the fields on the left.",
+		Hostname:              "bigip1",
+	}
+	return b.patch(defaultConfig, uriSys, uriGlobalSettings)
 }
