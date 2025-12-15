@@ -223,6 +223,7 @@ const (
 	uriAuthSrc         = "source"
 	uriRemoteUser      = "remote-user"
 	uriGlobalSettings  = "global-settings"
+	uriSshd            = "sshd"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -1736,4 +1737,60 @@ func (b *BigIP) DeleteGlobalSettings() error {
 		Hostname:              "bigip1",
 	}
 	return b.patch(defaultConfig, uriSys, uriGlobalSettings)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////           SSHD Configuration                ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// SSHDConfig represents the BIG-IP SSHD (SSH daemon) configuration.
+type SSHDConfig struct {
+	Allow             []string `json:"allow,omitempty"`
+	Banner            string   `json:"banner,omitempty"`
+	BannerText        string   `json:"bannerText,omitempty"`
+	FipsCipherVersion int      `json:"fipsCipherVersion,omitempty"`
+	InactivityTimeout int      `json:"inactivityTimeout,omitempty"`
+	Include           string   `json:"include,omitempty"`
+	LogLevel          string   `json:"logLevel,omitempty"`
+	Login             string   `json:"login,omitempty"`
+	Port              int      `json:"port,omitempty"`
+}
+
+// GetSSHDConfig retrieves the current SSHD configuration.
+func (b *BigIP) GetSSHDConfig() (*SSHDConfig, error) {
+	var sshdConfig SSHDConfig
+	err, ok := b.getForEntity(&sshdConfig, uriSys, uriSshd)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &sshdConfig, nil
+}
+
+// CreateSSHDConfig sets the SSHD configuration.
+func (b *BigIP) CreateSSHDConfig(config *SSHDConfig) error {
+	return b.patch(config, uriSys, uriSshd)
+}
+
+// ModifySSHDConfig updates the SSHD configuration.
+func (b *BigIP) ModifySSHDConfig(config *SSHDConfig) error {
+	return b.patch(config, uriSys, uriSshd)
+}
+
+// DeleteSSHDConfig resets the SSHD configuration to default values.
+func (b *BigIP) DeleteSSHDConfig() error {
+	defaultConfig := &SSHDConfig{
+		Allow:             []string{"ALL"},
+		Banner:            "disabled",
+		BannerText:        "none",
+		InactivityTimeout: 0,
+		Include:           "none",
+		LogLevel:          "info",
+		Login:             "enabled",
+		Port:              22,
+	}
+	return b.patch(defaultConfig, uriSys, uriSshd)
 }

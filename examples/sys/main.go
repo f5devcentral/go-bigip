@@ -40,7 +40,8 @@ func main() {
 	authSourceTesting := false
 	remoteUserTesting := false
 	syslogTesting := false
-	globalSettingsTesting := true
+	globalSettingsTesting := false
+	sshdTesting := true
 
 	if mgmtRouteTesting {
 		testManagementRouteCreation(f5)
@@ -113,6 +114,15 @@ func main() {
 		testGlobalSettingsRead(f5)
 		testGlobalSettingsDelete(f5)
 		testGlobalSettingsRead(f5)
+	}
+	if sshdTesting {
+		testSSHDRead(f5)
+		testSSHDCreate(f5)
+		testSSHDRead(f5)
+		testSSHDUpdate(f5)
+		testSSHDRead(f5)
+		testSSHDDelete(f5)
+		testSSHDRead(f5)
 	}
 
 }
