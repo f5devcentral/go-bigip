@@ -227,6 +227,7 @@ const (
 	uriHttpd           = "httpd"
 	uriCommunities     = "communities"
 	uriSnmpUsers       = "users"
+	uriHaGroup         = "ha-group"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -2110,4 +2111,112 @@ func (b *BigIP) ModifySnmpUser(name string, config *SnmpUser) error {
 // DeleteSnmpUser removes an SNMP user configuration.
 func (b *BigIP) DeleteSnmpUser(name string) error {
 	return b.delete(uriSys, uriSnmp, uriSnmpUsers, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////               HA Group                         /////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// HaGroups represents a collection of HA Group configurations.
+type HaGroups struct {
+	HaGroups []HaGroup `json:"items"`
+}
+
+// HaGroupPool represents a pool configuration within an HA Group.
+type HaGroupPool struct {
+	Name                string `json:"name,omitempty"`
+	Attribute           string `json:"attribute,omitempty"`
+	MinimumThreshold    int    `json:"minimumThreshold,omitempty"`
+	PercentUp           int    `json:"percentUp,omitempty"`
+	SufficientThreshold string `json:"sufficientThreshold,omitempty"`
+	Weight              int    `json:"weight,omitempty"`
+}
+
+// HaGroupCluster represents a cluster configuration within an HA Group.
+type HaGroupCluster struct {
+	Name                string `json:"name,omitempty"`
+	Attribute           string `json:"attribute,omitempty"`
+	MinimumThreshold    int    `json:"minimumThreshold,omitempty"`
+	PercentUp           int    `json:"percentUp,omitempty"`
+	SufficientThreshold string `json:"sufficientThreshold,omitempty"`
+	Weight              int    `json:"weight,omitempty"`
+}
+
+// HaGroupTrunk represents a trunk configuration within an HA Group.
+type HaGroupTrunk struct {
+	Name                string `json:"name,omitempty"`
+	Attribute           string `json:"attribute,omitempty"`
+	MinimumThreshold    int    `json:"minimumThreshold,omitempty"`
+	PercentUp           int    `json:"percentUp,omitempty"`
+	SufficientThreshold string `json:"sufficientThreshold,omitempty"`
+	Weight              int    `json:"weight,omitempty"`
+}
+
+// HaGroup represents an HA Group configuration for failover scoring.
+type HaGroup struct {
+	Name        string           `json:"name,omitempty"`
+	FullPath    string           `json:"fullPath,omitempty"`
+	ActiveBonus int              `json:"activeBonus,omitempty"`
+	Description string           `json:"description,omitempty"`
+	Enabled     bool             `json:"enabled,omitempty"`
+	Disabled    bool             `json:"disabled,omitempty"`
+	Pools       []HaGroupPool    `json:"pools,omitempty"`
+	Clusters    []HaGroupCluster `json:"clusters,omitempty"`
+	Trunks      []HaGroupTrunk   `json:"trunks,omitempty"`
+}
+
+// GetHaGroups returns a list of all HA Group configurations.
+func (b *BigIP) GetHaGroups() (*HaGroups, error) {
+	var haGroups HaGroups
+	err, ok := b.getForEntity(&haGroups, uriSys, uriHaGroup)
+	if err != nil {
+		if !ok {
+			return &HaGroups{}, nil
+		}
+		return nil, err
+	}
+
+	return &haGroups, nil
+}
+
+// GetHaGroup returns a named HA Group configuration.
+func (b *BigIP) GetHaGroup(name string) (*HaGroup, error) {
+	var haGroup HaGroup
+	err, ok := b.getForEntity(&haGroup, uriSys, uriHaGroup, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &haGroup, nil
+}
+
+func validateHaGroupState(config *HaGroup) error {
+	if config.Enabled && config.Disabled {
+		return fmt.Errorf(`"disabled" should not be specified with "enabled"`)
+	}
+	return nil
+}
+
+// CreateHaGroup adds a new HA Group configuration to the BIG-IP system.
+func (b *BigIP) CreateHaGroup(config *HaGroup) error {
+	if err := validateHaGroupState(config); err != nil {
+		return err
+	}
+	return b.post(config, uriSys, uriHaGroup)
+}
+
+// ModifyHaGroup allows you to change any attribute of an HA Group configuration.
+func (b *BigIP) ModifyHaGroup(name string, config *HaGroup) error {
+	if err := validateHaGroupState(config); err != nil {
+		return err
+	}
+	return b.put(config, uriSys, uriHaGroup, name)
+}
+
+// DeleteHaGroup removes an HA Group configuration.
+func (b *BigIP) DeleteHaGroup(name string) error {
+	return b.delete(uriSys, uriHaGroup, name)
 }
