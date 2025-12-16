@@ -225,6 +225,7 @@ const (
 	uriGlobalSettings  = "global-settings"
 	uriSshd            = "sshd"
 	uriHttpd           = "httpd"
+	uriCommunities     = "communities"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -1946,4 +1947,79 @@ func (b *BigIP) DeleteSnmpConfig() error {
 		AllowedAddresses: []string{"127.0.0.0/8"},
 	}
 	return b.patch(defaultConfig, uriSys, uriSnmp)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////           SNMP Communities                  ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// SnmpCommunities represents a collection of SNMP community configurations.
+type SnmpCommunities struct {
+	SnmpCommunities []SnmpCommunity `json:"items"`
+}
+
+// SnmpCommunity represents an SNMP community string configuration.
+type SnmpCommunity struct {
+	Name          string `json:"name,omitempty"`
+	FullPath      string `json:"fullPath,omitempty"`
+	Access        string `json:"access,omitempty"`
+	CommunityName string `json:"communityName,omitempty"`
+	Description   string `json:"description,omitempty"`
+	Ipv6          string `json:"ipv6,omitempty"`
+	OidSubset     string `json:"oidSubset,omitempty"`
+	Source        string `json:"source,omitempty"`
+}
+
+// GetSnmpCommunities returns a list of all SNMP community configurations.
+func (b *BigIP) GetSnmpCommunities() (*SnmpCommunities, error) {
+	var snmpCommunities SnmpCommunities
+	err, ok := b.getForEntity(&snmpCommunities, uriSys, uriSnmp, uriCommunities)
+	if err != nil {
+		if !ok {
+			return &SnmpCommunities{}, nil
+		}
+		return nil, err
+	}
+
+	return &snmpCommunities, nil
+}
+
+// GetSnmpCommunity returns a named SNMP community configuration.
+func (b *BigIP) GetSnmpCommunity(name string) (*SnmpCommunity, error) {
+	var snmpCommunity SnmpCommunity
+	err, ok := b.getForEntity(&snmpCommunity, uriSys, uriSnmp, uriCommunities, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &snmpCommunity, nil
+}
+
+func validateSnmpCommunity(config *SnmpCommunity) error {
+	if config.CommunityName == "" {
+		return errors.New("communityName is required")
+	}
+	return nil
+}
+
+// CreateSnmpCommunity adds a new SNMP community configuration to the BIG-IP system.
+func (b *BigIP) CreateSnmpCommunity(config *SnmpCommunity) error {
+	err := validateSnmpCommunity(config)
+	if err != nil {
+		return err
+	}
+	return b.post(config, uriSys, uriSnmp, uriCommunities)
+}
+
+// ModifySnmpCommunity allows the change of any attribute in SNMP community configuration.
+func (b *BigIP) ModifySnmpCommunity(name string, config *SnmpCommunity) error {
+	return b.put(config, uriSys, uriSnmp, uriCommunities, name)
+}
+
+// DeleteSnmpCommunity removes an SNMP community configuration.
+func (b *BigIP) DeleteSnmpCommunity(name string) error {
+	return b.delete(uriSys, uriSnmp, uriCommunities, name)
 }
