@@ -1902,3 +1902,48 @@ func (b *BigIP) DeleteHTTPDConfig() error {
 	}
 	return b.patch(defaultConfig, uriSys, uriHttpd)
 }
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////           SNMP Config                       ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// SnmpConfig represents the BIG-IP SNMP configuration settings.
+type SnmpConfig struct {
+	SysContact       string   `json:"sysContact,omitempty"`
+	SysLocation      string   `json:"sysLocation,omitempty"`
+	AllowedAddresses []string `json:"allowedAddresses,omitempty"`
+}
+
+// GetSnmpConfig retrieves the current SNMP configuration.
+func (b *BigIP) GetSnmpConfig() (*SnmpConfig, error) {
+	var snmpConfig SnmpConfig
+	err, ok := b.getForEntity(&snmpConfig, uriSys, uriSnmp)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &snmpConfig, nil
+}
+
+// CreateSnmpConfig sets the SNMP configuration.
+func (b *BigIP) CreateSnmpConfig(config *SnmpConfig) error {
+	return b.patch(config, uriSys, uriSnmp)
+}
+
+// ModifySnmpConfig updates the SNMP configuration.
+func (b *BigIP) ModifySnmpConfig(config *SnmpConfig) error {
+	return b.patch(config, uriSys, uriSnmp)
+}
+
+// DeleteSnmpConfig resets the SNMP configuration to default values.
+func (b *BigIP) DeleteSnmpConfig() error {
+	defaultConfig := &SnmpConfig{
+		SysContact:       "Customer Name <admin@customer.com>",
+		SysLocation:      "Network Closet 1",
+		AllowedAddresses: []string{"127.0.0.0/8"},
+	}
+	return b.patch(defaultConfig, uriSys, uriSnmp)
+}
