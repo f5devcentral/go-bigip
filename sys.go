@@ -226,6 +226,7 @@ const (
 	uriSshd            = "sshd"
 	uriHttpd           = "httpd"
 	uriCommunities     = "communities"
+	uriSnmpUsers       = "users"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -2022,4 +2023,91 @@ func (b *BigIP) ModifySnmpCommunity(name string, config *SnmpCommunity) error {
 // DeleteSnmpCommunity removes an SNMP community configuration.
 func (b *BigIP) DeleteSnmpCommunity(name string) error {
 	return b.delete(uriSys, uriSnmp, uriCommunities, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////              SNMP Users                     ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// SnmpUsers represents a collection of SNMP user configurations.
+type SnmpUsers struct {
+	SnmpUsers []SnmpUser `json:"items"`
+}
+
+// SnmpUser represents an SNMPv3 user account configuration.
+type SnmpUser struct {
+	Name            string `json:"name,omitempty"`
+	FullPath        string `json:"fullPath,omitempty"`
+	Access          string `json:"access,omitempty"`
+	AuthPassword    string `json:"authPassword,omitempty"`
+	AuthProtocol    string `json:"authProtocol,omitempty"`
+	Description     string `json:"description,omitempty"`
+	OidSubset       string `json:"oidSubset,omitempty"`
+	PrivacyPassword string `json:"privacyPassword,omitempty"`
+	PrivacyProtocol string `json:"privacyProtocol,omitempty"`
+	SecurityLevel   string `json:"securityLevel,omitempty"`
+	Username        string `json:"username,omitempty"`
+}
+
+// GetSnmpUsers returns a list of all SNMP user configurations.
+func (b *BigIP) GetSnmpUsers() (*SnmpUsers, error) {
+	var snmpUsers SnmpUsers
+	err, ok := b.getForEntity(&snmpUsers, uriSys, uriSnmp, uriSnmpUsers)
+	if err != nil {
+		if !ok {
+			return &SnmpUsers{}, nil
+		}
+		return nil, err
+	}
+
+	return &snmpUsers, nil
+}
+
+// GetSnmpUser returns a named SNMP user configuration.
+func (b *BigIP) GetSnmpUser(name string) (*SnmpUser, error) {
+	var snmpUser SnmpUser
+	err, ok := b.getForEntity(&snmpUser, uriSys, uriSnmp, uriSnmpUsers, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &snmpUser, nil
+}
+
+func validateSnmpUser(config *SnmpUser) error {
+	if config.Username == "" {
+		return errors.New("username is required")
+	}
+	if config.AuthProtocol == "" {
+		return errors.New("authProtocol is required (e.g., 'sha', 'md5')")
+	}
+	if config.PrivacyProtocol == "" {
+		return errors.New("privacyProtocol is required (e.g., 'aes', 'des')")
+	}
+	return nil
+}
+
+// CreateSnmpUser adds a new SNMP user configuration to the BIG-IP system.
+func (b *BigIP) CreateSnmpUser(config *SnmpUser) error {
+	err := validateSnmpUser(config)
+	if err != nil {
+		return err
+	}
+	return b.post(config, uriSys, uriSnmp, uriSnmpUsers)
+}
+
+// ModifySnmpUser allows you to change any attribute of an SNMP user configuration.
+// We need to use PATCH method due to "authPasswordEncrypted" and "privacyPasswordEncrypted" attribute
+// DOCUMENTATION: "privacyPasswordEncrypted": "Encrypted password used to encrypt traffic.
+// NOTICE: This display only field is deprecated in TMOS 14.1.0"
+func (b *BigIP) ModifySnmpUser(name string, config *SnmpUser) error {
+	return b.patch(config, uriSys, uriSnmp, uriSnmpUsers, name)
+}
+
+// DeleteSnmpUser removes an SNMP user configuration.
+func (b *BigIP) DeleteSnmpUser(name string) error {
+	return b.delete(uriSys, uriSnmp, uriSnmpUsers, name)
 }

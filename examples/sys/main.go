@@ -44,7 +44,8 @@ func main() {
 	sshdTesting := false
 	httpdTesting := false
 	snmpConfigTesting := false
-	snmpCommunitiesTesting := true
+	snmpCommunitiesTesting := false
+	snmpUsersTesting := true
 
 	if mgmtRouteTesting {
 		testManagementRouteCreation(f5)
@@ -153,6 +154,15 @@ func main() {
 		testSnmpCommunitiesRead(f5)
 		testSnmpCommunityDelete(f5)
 		testSnmpCommunitiesRead(f5)
+	}
+	if snmpUsersTesting {
+		testSnmpUsersRead(f5)
+		testSnmpUserCreation(f5)
+		testSnmpUsersRead(f5)
+		testSnmpUserUpdate(f5)
+		testSnmpUsersRead(f5)
+		testSnmpUserDelete(f5)
+		testSnmpUsersRead(f5)
 	}
 
 }
