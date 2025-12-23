@@ -11,6 +11,7 @@ See the License for the specific language governing permissions and limitations 
 package bigip
 
 import (
+	"context"
 	"regexp"
 	"strings"
 )
@@ -309,6 +310,23 @@ type IPSecProfile struct {
 	TrafficSelector string `json:"trafficSelector,omitempty"`
 }
 
+type AddressLists struct {
+	AddressLists []AddressList `json:"items,omitempty"`
+}
+
+type AddressList struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Partition   string `json:"partition,omitempty"`
+	FullPath    string `json:"fullPath,omitempty"`
+	Generation  int    `json:"generation,omitempty"`
+	Addresses   []AddressListAddress `json:"addresses,omitempty"`
+}
+
+type AddressListAddress struct {
+	Name string `json:"name,omitempty"`
+}
+
 const (
 	uriNet             = "net"
 	uriInterface       = "interface"
@@ -325,6 +343,7 @@ const (
 	uriTrafficselector = "traffic-selector"
 	uriIpsecPolicy     = "ipsec-policy"
 	uriIkePeer         = "ike-peer"
+	uriAddressList     = "address-list"
 )
 
 // formatResourceID takes the resource name to
@@ -823,3 +842,63 @@ func (b *BigIP) GetIPSecProfile(name string) (*IPSecProfile, error) {
 
 	return &ipsec, nil
 }
+
+func (b *BigIP) AddressLists(ctx context.Context) (*AddressLists, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	var addressLists AddressLists
+	err, ok := b.getForEntity(&addressLists, uriNet, uriAddressList)
+	if err != nil {
+    return nil, err
+	}
+
+	if !ok {
+		return nil, nil
+	}
+
+	return &addressLists, nil
+}
+
+func (b *BigIP) GetAddressList(ctx context.Context, name string) (*AddressList, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+  var addressList AddressList
+	err, ok := b.getForEntity(&addressList, uriNet, uriAddressList, name)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ok {
+		return nil, nil
+	}
+	return &addressList, nil
+}
+
+func (b *BigIP) AddAddressList(ctx context.Context, config *AddressList) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	return b.post(config, uriNet, uriAddressList)
+}
+
+func (b *BigIP) ModifyAddressList(ctx context.Context, name string, config *AddressList) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	return b.patch(config, uriNet, uriAddressList, name)
+}
+
+func (b *BigIP) DeleteAddressList(ctx context.Context, name string) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	return b.delete(uriNet, uriAddressList, name)
+}
+
