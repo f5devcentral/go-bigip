@@ -1,10 +1,12 @@
 package bigip
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -248,7 +250,11 @@ func (s *NetTestSuite) TestVlans() {
 }
 
 func (s *NetTestSuite) TestCreateVLan() {
-	err := s.Client.CreateVlan("name", 1)
+	someVlan := &Vlan{
+		Name: "name",
+		Tag: 1,
+	}
+	err := s.Client.CreateVlan(someVlan)
 
 	assert.Nil(s.T(), err)
 	assertRestCall(s, "POST", "/mgmt/tm/net/vlan", `{"name":"name", "tag":1, "sflow":{}}`)
@@ -487,7 +493,7 @@ func (s *NetTestSuite) TestGetTunnel() {
 	tunnel, err := s.Client.GetTunnel("http-tunnel")
 
 	assert.Nil(s.T(), err)
-	assertRestCall(s, "GET", "/mgmt/tm/net/tunnels/tunnel/~Common~http-tunnel", "")
+	assertRestCall(s, "GET", "/mgmt/tm/net/tunnels/tunnel/http-tunnel", "")
 	assert.Equal(s.T(), "http-tunnel", tunnel.Name)
 	assert.Equal(s.T(), "/Common/tcp-forward", tunnel.Profile)
 }
@@ -665,3 +671,135 @@ func (s *NetTestSuite) TestModifyVxlan() {
 	assert.Nil(s.T(), err)
 	assertRestCall(s, "PUT", "/mgmt/tm/net/tunnels/vxlan/some-foo-vxlan", `{"port":456}`)
 }
+
+var someAddresses = []AddressListAddress{
+  { Name: "1.2.3.4" },
+  { Name: "4.3.2.1" },
+}
+
+func (s *NetTestSuite) TestAddressLists() {
+	s.ResponseFunc = func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{
+	"kind": "tm:net:address-list:address-listcollectionstate",
+	"selfLink": "https://localhost/mgmt/tm/net/address-list?ver=1.2.3.4",
+	"items": [
+	  {
+			"kind": "tm:net:address-list:address-liststate",
+			"selfLink": "https://localhost/mgmt/tm/net/address-list/~Common~addresslist-foo?ver=1.2.3.4",
+			"name": "addresslist-foo",
+			"partition": "Common",
+			"fullPath": "/Common/addresslist-foo",
+			"generation": 1,
+			"description": "An address list",
+			"addresses": [
+			  {
+					"name": "1.2.3.4"
+				},
+				{
+					"name": "4.3.2.1"
+				}
+			]
+		},
+	  {
+			"kind": "tm:net:address-list:address-liststate",
+			"selfLink": "https://localhost/mgmt/tm/net/address-list/~Common~addresslist-bar?ver=1.2.3.4",
+			"name": "addresslist-bar",
+			"partition": "Common",
+			"fullPath": "/Common/addresslist-bar",
+			"generation": 1,
+			"addresses": [
+			  {
+					"name": "9.8.7.6"
+				}
+			]
+		}
+	]
+}`))
+	}
+
+  ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	addressLists, err := s.Client.AddressLists(ctx)
+
+	assert.Nil(s.T(), err)
+	assertRestCall(s, "GET", "/mgmt/tm/net/address-list", "")
+	assert.Equal(s.T(), 2, len(addressLists.AddressLists))
+	assert.Equal(s.T(), "addresslist-foo", addressLists.AddressLists[0].Name)
+	assert.Equal(s.T(), "addresslist-bar", addressLists.AddressLists[1].Name)
+}
+
+func (s *NetTestSuite) TestGetAddressList() {
+	s.ResponseFunc = func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{
+  "kind": "tm:net:address-list:address-liststate",
+	"selfLink": "https://localhost/mgmt/tm/net/address-list/~Common~addresslist-foo",
+	"name": "addresslist-foo",
+	"fullPath": "/Common/addresslist-foo",
+	"generation": 1,
+	"description": "An address list",
+	"addresses": [
+	  {
+      "name": "1.2.3.4"
+	  },
+		{
+			"name": "4.3.2.1"
+		}
+	]
+}`))
+	}
+
+  ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	addressList, err := s.Client.GetAddressList(ctx, "addresslist-foo")
+
+	assert.Nil(s.T(), err)
+	assertRestCall(s, "GET", "/mgmt/tm/net/address-list/addresslist-foo", "")
+	assert.Equal(s.T(), "addresslist-foo", addressList.Name)
+	assert.Equal(s.T(), someAddresses, addressList.Addresses)
+}
+
+func (s *NetTestSuite) TestAddAddressList() {
+	someAddressList := AddressList{
+		Name:              "addresslist-foo",
+		Description:       "An address list",
+		Partition:         "Common",
+		Addresses:         someAddresses,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	err := s.Client.AddAddressList(ctx, &someAddressList)
+
+	assert.Nil(s.T(), err)
+	assertRestCall(s, "POST", "/mgmt/tm/net/address-list", `{"addresses":[{"name":"1.2.3.4"}, {"name":"4.3.2.1"}], "description":"An address list", "name":"addresslist-foo", "partition":"Common"}`)
+}
+
+func (s *NetTestSuite) TestModifyAddressList() {
+	someAddressListMod := AddressList{
+		Addresses: []AddressListAddress{
+			{ Name: "6.7.8.9", },
+	  },
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	err := s.Client.ModifyAddressList(ctx, "addresslist-foo", &someAddressListMod)
+
+	assert.Nil(s.T(), err)
+	assertRestCall(s, "PATCH", "/mgmt/tm/net/address-list/addresslist-foo", `{"addresses": [{"name": "6.7.8.9"}]}`)
+}
+
+func (s *NetTestSuite) TestDeleteAddressList() {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	err := s.Client.DeleteAddressList(ctx, "addresslist-foo")
+
+	assert.Nil(s.T(), err)
+	assertRestCall(s, "DELETE", "/mgmt/tm/net/address-list/addresslist-foo", "")
+}
+
