@@ -1874,7 +1874,6 @@ func (b *BigIP) DeleteHTTPDConfig() error {
 		AuthPamIdleTimeout:       1200,
 		AuthPamValidateIp:        "on",
 		FastcgiTimeout:           300,
-		FipsCipherVersion:        0,
 		HostnameLookup:           "off",
 		Include:                  "none",
 		LogLevel:                 "warn",
