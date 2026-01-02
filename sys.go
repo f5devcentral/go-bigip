@@ -1817,12 +1817,12 @@ type HTTPDConfig struct {
 	LogLevel                 string   `json:"logLevel,omitempty"`
 	MaxClients               int      `json:"maxClients,omitempty"`
 	RedirectHttpToHttps      string   `json:"redirectHttpToHttps,omitempty"`
-	RequestBodyMaxTimeout    int      `json:"requestBodyMaxTimeout,omitempty"`
-	RequestBodyMinRate       int      `json:"requestBodyMinRate,omitempty"`
-	RequestBodyTimeout       int      `json:"requestBodyTimeout,omitempty"`
-	RequestHeaderMaxTimeout  int      `json:"requestHeaderMaxTimeout,omitempty"`
-	RequestHeaderMinRate     int      `json:"requestHeaderMinRate,omitempty"`
-	RequestHeaderTimeout     int      `json:"requestHeaderTimeout,omitempty"`
+	RequestBodyMaxTimeout    int      `json:"requestBodyMaxTimeout"`
+	RequestBodyMinRate       int      `json:"requestBodyMinRate"`
+	RequestBodyTimeout       int      `json:"requestBodyTimeout"`
+	RequestHeaderMaxTimeout  int      `json:"requestHeaderMaxTimeout"`
+	RequestHeaderMinRate     int      `json:"requestHeaderMinRate"`
+	RequestHeaderTimeout     int      `json:"requestHeaderTimeout"`
 	SslCaCertFile            string   `json:"sslCaCertFile,omitempty"`
 	SslCertchainfile         string   `json:"sslCertchainfile,omitempty"`
 	SslCertfile              string   `json:"sslCertfile,omitempty"`
@@ -1832,9 +1832,9 @@ type HTTPDConfig struct {
 	SslOcspDefaultResponder  string   `json:"sslOcspDefaultResponder,omitempty"`
 	SslOcspEnable            string   `json:"sslOcspEnable,omitempty"`
 	SslOcspOverrideResponder string   `json:"sslOcspOverrideResponder,omitempty"`
-	SslOcspResponderTimeout  int      `json:"sslOcspResponderTimeout,omitempty"`
-	SslOcspResponseMaxAge    int      `json:"sslOcspResponseMaxAge,omitempty"`
-	SslOcspResponseTimeSkew  int      `json:"sslOcspResponseTimeSkew,omitempty"`
+	SslOcspResponderTimeout  int      `json:"sslOcspResponderTimeout"`
+	SslOcspResponseMaxAge    int      `json:"sslOcspResponseMaxAge"`
+	SslOcspResponseTimeSkew  int      `json:"sslOcspResponseTimeSkew"`
 	SslPort                  int      `json:"sslPort,omitempty"`
 	SslProtocol              string   `json:"sslProtocol,omitempty"`
 	SslVerifyClient          string   `json:"sslVerifyClient,omitempty"`
