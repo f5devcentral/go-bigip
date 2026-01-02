@@ -1752,8 +1752,8 @@ type SSHDConfig struct {
 	Allow             []string `json:"allow,omitempty"`
 	Banner            string   `json:"banner,omitempty"`
 	BannerText        string   `json:"bannerText,omitempty"`
-	FipsCipherVersion int      `json:"fipsCipherVersion,omitempty"`
-	InactivityTimeout int      `json:"inactivityTimeout,omitempty"`
+	FipsCipherVersion int      `json:"fipsCipherVersion"`
+	InactivityTimeout int      `json:"inactivityTimeout"`
 	Include           string   `json:"include,omitempty"`
 	LogLevel          string   `json:"logLevel,omitempty"`
 	Login             string   `json:"login,omitempty"`
