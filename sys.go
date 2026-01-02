@@ -1811,7 +1811,7 @@ type HTTPDConfig struct {
 	AuthPamIdleTimeout       int      `json:"authPamIdleTimeout,omitempty"`
 	AuthPamValidateIp        string   `json:"authPamValidateIp,omitempty"`
 	FastcgiTimeout           int      `json:"fastcgiTimeout,omitempty"`
-	FipsCipherVersion        int      `json:"fipsCipherVersion,omitempty"`
+	FipsCipherVersion        int      `json:"fipsCipherVersion"`
 	HostnameLookup           string   `json:"hostnameLookup,omitempty"`
 	Include                  string   `json:"include,omitempty"`
 	LogLevel                 string   `json:"logLevel,omitempty"`
