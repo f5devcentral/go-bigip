@@ -779,10 +779,10 @@ type RouteDomain struct {
 	Description                string   `json:"description,omitempty"`
 	Strict                     string   `json:"strict,omitempty"`
 	Parent                     string   `json:"parent,omitempty"`
-	Vlans                      []string `json:"vlans,omitempty"`
-	RoutingProtocol            []string `json:"routingProtocol,omitempty"`
+	Vlans                      []string `json:"vlans,omitzero"`
+	RoutingProtocol            []string `json:"routingProtocol,omitzero"`
 	BwcPolicy                  string   `json:"bwcPolicy,omitempty"`
-	ConnectionLimit            int      `json:"connectionLimit,omitempty"`
+	ConnectionLimit            int      `json:"connectionLimit"`
 	FlowEvictionPolicy         string   `json:"flowEvictionPolicy,omitempty"`
 	FwEnforcedPolicy           string   `json:"fwEnforcedPolicy,omitempty"`
 	FwStagedPolicy             string   `json:"fwStagedPolicy,omitempty"`

@@ -1913,7 +1913,7 @@ func (b *BigIP) DeleteHTTPDConfig() error {
 type SnmpConfig struct {
 	SysContact       string   `json:"sysContact,omitempty"`
 	SysLocation      string   `json:"sysLocation,omitempty"`
-	AllowedAddresses []string `json:"allowedAddresses,omitempty"`
+	AllowedAddresses []string `json:"allowedAddresses,omitzero"`
 }
 
 // GetSnmpConfig retrieves the current SNMP configuration.
@@ -2039,11 +2039,11 @@ type SnmpUser struct {
 	Name            string `json:"name,omitempty"`
 	FullPath        string `json:"fullPath,omitempty"`
 	Access          string `json:"access,omitempty"`
-	AuthPassword    string `json:"authPassword,omitempty"`
+	AuthPassword    string `json:"authPassword"`
 	AuthProtocol    string `json:"authProtocol,omitempty"`
 	Description     string `json:"description,omitempty"`
 	OidSubset       string `json:"oidSubset,omitempty"`
-	PrivacyPassword string `json:"privacyPassword,omitempty"`
+	PrivacyPassword string `json:"privacyPassword"`
 	PrivacyProtocol string `json:"privacyProtocol,omitempty"`
 	SecurityLevel   string `json:"securityLevel,omitempty"`
 	Username        string `json:"username,omitempty"`
@@ -2125,8 +2125,8 @@ type HaGroups struct {
 type HaGroupPool struct {
 	Name                string `json:"name,omitempty"`
 	Attribute           string `json:"attribute,omitempty"`
-	MinimumThreshold    int    `json:"minimumThreshold,omitempty"`
-	PercentUp           int    `json:"percentUp,omitempty"`
+	MinimumThreshold    int    `json:"minimumThreshold"`
+	PercentUp           int    `json:"percentUp"`
 	SufficientThreshold string `json:"sufficientThreshold,omitempty"`
 	Weight              int    `json:"weight,omitempty"`
 }
@@ -2135,8 +2135,8 @@ type HaGroupPool struct {
 type HaGroupCluster struct {
 	Name                string `json:"name,omitempty"`
 	Attribute           string `json:"attribute,omitempty"`
-	MinimumThreshold    int    `json:"minimumThreshold,omitempty"`
-	PercentUp           int    `json:"percentUp,omitempty"`
+	MinimumThreshold    int    `json:"minimumThreshold"`
+	PercentUp           int    `json:"percentUp"`
 	SufficientThreshold string `json:"sufficientThreshold,omitempty"`
 	Weight              int    `json:"weight,omitempty"`
 }
@@ -2145,8 +2145,8 @@ type HaGroupCluster struct {
 type HaGroupTrunk struct {
 	Name                string `json:"name,omitempty"`
 	Attribute           string `json:"attribute,omitempty"`
-	MinimumThreshold    int    `json:"minimumThreshold,omitempty"`
-	PercentUp           int    `json:"percentUp,omitempty"`
+	MinimumThreshold    int    `json:"minimumThreshold"`
+	PercentUp           int    `json:"percentUp"`
 	SufficientThreshold string `json:"sufficientThreshold,omitempty"`
 	Weight              int    `json:"weight,omitempty"`
 }
@@ -2155,13 +2155,13 @@ type HaGroupTrunk struct {
 type HaGroup struct {
 	Name        string           `json:"name,omitempty"`
 	FullPath    string           `json:"fullPath,omitempty"`
-	ActiveBonus int              `json:"activeBonus,omitempty"`
+	ActiveBonus int              `json:"activeBonus"`
 	Description string           `json:"description,omitempty"`
-	Enabled     bool             `json:"enabled,omitempty"`
-	Disabled    bool             `json:"disabled,omitempty"`
-	Pools       []HaGroupPool    `json:"pools,omitempty"`
-	Clusters    []HaGroupCluster `json:"clusters,omitempty"`
-	Trunks      []HaGroupTrunk   `json:"trunks,omitempty"`
+	Enabled     bool             `json:"enabled"`
+	Disabled    bool             `json:"disabled"`
+	Pools       []HaGroupPool    `json:"pools,omitzero"`
+	Clusters    []HaGroupCluster `json:"clusters,omitzero"`
+	Trunks      []HaGroupTrunk   `json:"trunks,omitzero"`
 }
 
 // GetHaGroups returns a list of all HA Group configurations.
@@ -2193,8 +2193,8 @@ func (b *BigIP) GetHaGroup(name string) (*HaGroup, error) {
 }
 
 func validateHaGroupState(config *HaGroup) error {
-	if config.Enabled && config.Disabled {
-		return fmt.Errorf(`"disabled" should not be specified with "enabled"`)
+	if config.Enabled == config.Disabled {
+		return fmt.Errorf(`"enabled" and "disabled" cannot have the same value`)
 	}
 	return nil
 }
