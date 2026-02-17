@@ -2586,13 +2586,12 @@ type DBVariable struct {
 }
 
 // GetDBVariable returns a named DB variable.
+// Returns the error from the API call if any error occurs.
+// This allows callers to properly handle API unavailability (502/503) vs not found.
 func (b *BigIP) GetDBVariable(name string) (*DBVariable, error) {
 	var dbVar DBVariable
-	err, ok := b.getForEntity(&dbVar, uriSys, uriDb, name)
+	err, _ := b.getForEntity(&dbVar, uriSys, uriDb, name)
 	if err != nil {
-		if !ok {
-			return nil, nil
-		}
 		return nil, err
 	}
 
