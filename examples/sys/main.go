@@ -36,7 +36,7 @@ func main() {
 	mgmtRouteTesting := false
 	mgmtFwRuleTesting := false
 	remoteRoleTesting := false
-	ldapAuthTesting := false
+	ldapAuthTesting := true
 	authSourceTesting := false
 	remoteUserTesting := false
 	syslogTesting := false
@@ -46,9 +46,10 @@ func main() {
 	snmpConfigTesting := false
 	snmpCommunitiesTesting := false
 	snmpUsersTesting := false
-	haGroupTesting := true
+	haGroupTesting := false
 
 	if mgmtRouteTesting {
+		testManagementRouteRead(f5)
 		testManagementRouteCreation(f5)
 		testManagementRouteRead(f5)
 		testManagementRouteUpdate(f5)
