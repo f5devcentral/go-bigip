@@ -2582,7 +2582,7 @@ var DefaultDBValues = map[string]interface{}{
 
 type DBVariable struct {
 	Name  string `json:"name,omitempty"`
-	Value string `json:"value,omitempty"`
+	Value string `json:"value"`
 }
 
 // GetDBVariable returns a named DB variable.
