@@ -11,6 +11,7 @@ See the License for the specific language governing permissions and limitations 
 package bigip
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -159,23 +160,6 @@ type Route struct {
 	//      Link string `json:"link"`
 	//} `json:"tmInterfaceReference,omitempty"`
 	Network string `json:"network,omitempty"`
-}
-
-// RouteDomains contains a list of every route domain on the BIG-IP system.
-type RouteDomains struct {
-	RouteDomains []RouteDomain `json:"items"`
-}
-
-// RouteDomain contains information about each individual route domain. You can use all
-// of these fields when modifying a route domain.
-type RouteDomain struct {
-	Name       string   `json:"name,omitempty"`
-	Partition  string   `json:"partition,omitempty"`
-	FullPath   string   `json:"fullPath,omitempty"`
-	Generation int      `json:"generation,omitempty"`
-	ID         int      `json:"id,omitempty"`
-	Strict     string   `json:"strict,omitempty"`
-	Vlans      []string `json:"vlans,omitempty"`
 }
 
 // Tunnels contains a list of tunnel objects on the BIG-IP system.
@@ -566,54 +550,6 @@ func (b *BigIP) ModifyRoute(name string, config *Route) error {
 	return b.put(config, uriNet, uriRoute, name)
 }
 
-// RouteDomains returns a list of route domains.
-func (b *BigIP) RouteDomains() (*RouteDomains, error) {
-	var rd RouteDomains
-	err, _ := b.getForEntity(&rd, uriNet, uriRouteDomain)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &rd, nil
-}
-
-// CreateRouteDomain adds a new route domain to the BIG-IP system. <vlans> must be separated
-// by a comma, i.e.: "vlan1010, vlan1020".
-func (b *BigIP) CreateRouteDomain(name string, id int, strict bool, vlans string) error {
-	strictIsolation := "enabled"
-	vlanMembers := []string{}
-	rawVlans := strings.Split(vlans, ",")
-
-	for _, v := range rawVlans {
-		vlanMembers = append(vlanMembers, strings.Trim(v, " "))
-	}
-
-	if !strict {
-		strictIsolation = "disabled"
-	}
-
-	config := &RouteDomain{
-		Name:   name,
-		ID:     id,
-		Strict: strictIsolation,
-		Vlans:  vlanMembers,
-	}
-
-	return b.post(config, uriNet, uriRouteDomain)
-}
-
-// DeleteRouteDomain removes a route domain.
-func (b *BigIP) DeleteRouteDomain(name string) error {
-	return b.delete(uriNet, uriRouteDomain, name)
-}
-
-// ModifyRouteDomain allows you to change any attribute of a route domain. Fields that
-// can be modified are referenced in the RouteDomain struct.
-func (b *BigIP) ModifyRouteDomain(name string, config *RouteDomain) error {
-	return b.put(config, uriNet, uriRouteDomain, name)
-}
-
 // Tunnels returns a list of tunnels.
 func (b *BigIP) Tunnels() (*Tunnels, error) {
 	var tunnels Tunnels
@@ -822,4 +758,88 @@ func (b *BigIP) GetIPSecProfile(name string) (*IPSecProfile, error) {
 	}
 
 	return &ipsec, nil
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////              Route Domain                   ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// RouteDomains represents a collection of BIG-IP route domains with all available attributes.
+type RouteDomains struct {
+	RouteDomains []RouteDomain `json:"items"`
+}
+
+// RouteDomain represents a BIG-IP route domain configuration with all available attributes.
+// This includes fields for firewall policies, bandwidth control, NAT, and other advanced features.
+type RouteDomain struct {
+	Name                       string   `json:"name,omitempty"`
+	FullPath                   string   `json:"fullPath,omitempty"`
+	ID                         int      `json:"id,omitempty"`
+	Partition                  string   `json:"partition,omitempty"`
+	Description                string   `json:"description,omitempty"`
+	Strict                     string   `json:"strict,omitempty"`
+	Parent                     string   `json:"parent,omitempty"`
+	Vlans                      []string `json:"vlans,omitzero"`
+	RoutingProtocol            []string `json:"routingProtocol,omitzero"`
+	BwcPolicy                  string   `json:"bwcPolicy,omitempty"`
+	ConnectionLimit            int      `json:"connectionLimit"`
+	FlowEvictionPolicy         string   `json:"flowEvictionPolicy,omitempty"`
+	FwEnforcedPolicy           string   `json:"fwEnforcedPolicy,omitempty"`
+	FwStagedPolicy             string   `json:"fwStagedPolicy,omitempty"`
+	IpIntelligencePolicy       string   `json:"ipIntelligencePolicy,omitempty"`
+	SecurityNatPolicy          string   `json:"securityNatPolicy,omitempty"`
+	SecurityPacketFilterPolicy string   `json:"securityPacketFilterPolicy,omitempty"`
+	ServicePolicy              string   `json:"servicePolicy,omitempty"`
+	ThroughputCapacity         string   `json:"throughputCapacity,omitempty"`
+}
+
+// GetRouteDomains returns a list of all route domains with all available attributes.
+func (b *BigIP) GetRouteDomains() (*RouteDomains, error) {
+	var routedomains RouteDomains
+	err, ok := b.getForEntity(&routedomains, uriNet, uriRouteDomain)
+	if err != nil {
+		if !ok {
+			return &RouteDomains{}, nil
+		}
+		return nil, err
+	}
+
+	return &routedomains, nil
+}
+
+// GetRouteDomain returns a named route domain with all available attributes.
+func (b *BigIP) GetRouteDomain(name string) (*RouteDomain, error) {
+	var routedomain RouteDomain
+	err, ok := b.getForEntity(&routedomain, uriNet, uriRouteDomain, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &routedomain, nil
+}
+
+// CreateRouteDomain adds a new route domain to the BIG-IP system.
+func (b *BigIP) CreateRouteDomain(config *RouteDomain) error {
+	if config.ID == 0 {
+		return fmt.Errorf("route domain ID is required and cannot be 0")
+	}
+	if config.Name == "" {
+		return fmt.Errorf("route domain name is required")
+	}
+
+	return b.post(config, uriNet, uriRouteDomain)
+}
+
+// DeleteRouteDomain removes a route domain.
+func (b *BigIP) DeleteRouteDomain(name string) error {
+	return b.delete(uriNet, uriRouteDomain, name)
+}
+
+// ModifyRouteDomain allows you to change any attribute of a route domain.
+// Fields that can be modified are referenced in the RouteDomain struct.
+func (b *BigIP) ModifyRouteDomain(name string, config *RouteDomain) error {
+	return b.patch(config, uriNet, uriRouteDomain, name)
 }

@@ -12,6 +12,7 @@ package bigip
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // LIC contains device license for BIG-IP system.
@@ -364,4 +365,118 @@ func (b *BigIP) DevicegroupsDevices(name, rname string) (*Devicegroup, error) {
 	}
 
 	return &devicegroup, nil
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////               Device Self                      /////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+type DeviceSelf struct {
+	Name               string           `json:"name,omitempty"`
+	MirrorIp           string           `json:"mirrorIp,omitempty"`
+	MirrorSecondaryIp  string           `json:"mirrorSecondaryIp,omitempty"`
+	ConfigsyncIp       string           `json:"configsyncIp,omitempty"`
+	MulticastInterface string           `json:"multicastInterface"`
+	MulticastIp        string           `json:"multicastIp,omitempty"`
+	MulticastPort      int              `json:"multicastPort"`
+	UnicastAddress     []UnicastAddress `json:"unicastAddress"`
+}
+
+func (b *BigIP) CreateDeviceSelf(config *DeviceSelf) error {
+	return b.patch(config, uriCm, uriDiv, config.Name)
+}
+
+func (b *BigIP) GetDeviceSelf(name string) (*DeviceSelf, error) {
+	var device DeviceSelf
+	err, _ := b.getForEntity(&device, uriCm, uriDiv, name)
+	if err != nil {
+		return nil, err
+	}
+	return &device, nil
+}
+
+func (b *BigIP) ModifyDeviceSelf(config *DeviceSelf) error {
+	return b.patch(config, uriCm, uriDiv, config.Name)
+}
+
+func (b *BigIP) DeleteDeviceSelf(name string) error {
+	defaultConfig := &DeviceSelf{
+		MirrorIp:           "any6",
+		MirrorSecondaryIp:  "any6",
+		ConfigsyncIp:       "none",
+		MulticastInterface: "",
+		MulticastIp:        "any6",
+		MulticastPort:      0,
+		UnicastAddress:     []UnicastAddress{},
+	}
+	return b.patch(defaultConfig, uriCm, uriDiv, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////            Device Name (Self)                  /////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// GetSelfDeviceName returns the name of the local BIG-IP device.
+// It queries all devices and finds the one marked as selfDevice.
+func (b *BigIP) GetSelfDeviceName() (string, error) {
+	devices, err := b.GetDevices()
+	if err != nil {
+		return "", err
+	}
+
+	for _, d := range devices {
+		if d.SelfDevice == "true" {
+			return d.Name, nil
+		}
+	}
+
+	return "", fmt.Errorf("no self device found")
+}
+
+// CreateDeviceName renames the BIG-IP device to the specified target name.
+func (b *BigIP) CreateDeviceName(target string) error {
+	currentName, err := b.GetSelfDeviceName()
+	if err != nil {
+		return fmt.Errorf("unable to get current device name: %v", err)
+	}
+
+	config := &Devicename{
+		Command: "mv",
+		Name:    currentName,
+		Target:  target,
+	}
+
+	return b.post(config, uriCm, uriDiv)
+}
+
+// ModifyDeviceName renames the BIG-IP device to the specified target name.
+func (b *BigIP) ModifyDeviceName(target string) error {
+	currentName, err := b.GetSelfDeviceName()
+	if err != nil {
+		return fmt.Errorf("unable to get current device name: %v", err)
+	}
+
+	config := &Devicename{
+		Command: "mv",
+		Name:    currentName,
+		Target:  target,
+	}
+
+	return b.post(config, uriCm, uriDiv)
+}
+
+// DeleteDeviceName resets the BIG-IP device name to the default "bigip1".
+func (b *BigIP) DeleteDeviceName() error {
+	currentName, err := b.GetSelfDeviceName()
+	if err != nil {
+		return fmt.Errorf("unable to get current device name: %v", err)
+	}
+
+	config := &Devicename{
+		Command: "mv",
+		Name:    currentName,
+		Target:  "bigip1",
+	}
+
+	return b.post(config, uriCm, uriDiv)
 }

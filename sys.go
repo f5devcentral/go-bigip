@@ -12,6 +12,7 @@ package bigip
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -88,74 +89,6 @@ type Provision struct {
 	DiskRatio   int    `json:"diskRatio,omitempty"`
 	Level       string `json:"level,omitempty"`
 	MemoryRatio int    `json:"memoryRatio,omitempty"`
-}
-
-type Syslogs struct {
-	Syslogs []Syslog `json:"items"`
-}
-
-type Syslog struct {
-	AuthPrivFrom  string
-	RemoteServers []RemoteServer
-}
-
-type syslogDTO struct {
-	AuthPrivFrom  string `json:"authPrivFrom,omitempty"`
-	RemoteServers struct {
-		Items []RemoteServer `json:"items,omitempty"`
-	} `json:"remoteServers,omitempty"`
-}
-
-func (p *Syslog) MarshalJSON() ([]byte, error) {
-	var dto syslogDTO
-	return json.Marshal(dto)
-}
-
-func (p *Syslog) UnmarshalJSON(b []byte) error {
-	var dto syslogDTO
-	err := json.Unmarshal(b, &dto)
-	if err != nil {
-		return err
-	}
-
-	p.AuthPrivFrom = dto.AuthPrivFrom
-	p.RemoteServers = dto.RemoteServers.Items
-
-	return nil
-}
-
-type RemoteServer struct {
-	Name       string `json:"name,omitempty"`
-	Host       string `json:"host,omitempty"`
-	RemotePort int    `json:"remotePort,omitempty"`
-}
-
-type remoteServerDTO struct {
-	Name       string `json:"name,omitempty"`
-	Host       string `json:"host,omitempty"`
-	RemotePort int    `json:"remotePort,omitempty"`
-}
-
-func (p *RemoteServer) MarshalJSON() ([]byte, error) {
-	return json.Marshal(remoteServerDTO{
-		Name:       p.Name,
-		Host:       p.Host,
-		RemotePort: p.RemotePort,
-	})
-}
-
-func (p *RemoteServer) UnmarshalJSON(b []byte) error {
-	var dto remoteServerDTO
-	err := json.Unmarshal(b, &dto)
-	if err != nil {
-		return err
-	}
-
-	p.Name = dto.Name
-	p.Host = dto.Host
-	p.RemotePort = dto.RemotePort
-
-	return nil
 }
 
 type SNMPs struct {
@@ -283,6 +216,18 @@ func (p *LogPublisher) UnmarshalJSON(b []byte) error {
 }
 
 const (
+	uriMgmtRoute       = "management-route"
+	uriMgmtIpRules     = "management-ip-rules"
+	uriRules           = "rules"
+	uriLdap            = "ldap"
+	uriAuthSrc         = "source"
+	uriRemoteUser      = "remote-user"
+	uriGlobalSettings  = "global-settings"
+	uriSshd            = "sshd"
+	uriHttpd           = "httpd"
+	uriCommunities     = "communities"
+	uriSnmpUsers       = "users"
+	uriHaGroup         = "ha-group"
 	uriSys             = "sys"
 	uriTm              = "tm"
 	uriCli             = "cli"
@@ -892,25 +837,6 @@ func (b *BigIP) Provisions(name string) (*Provision, error) {
 	return &provision, nil
 }
 
-func (b *BigIP) Syslogs() (*Syslog, error) {
-	var syslog Syslog
-	err, _ := b.getForEntity(&syslog, uriSys, uriSyslog)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &syslog, nil
-}
-
-func (b *BigIP) CreateSyslog(r *Syslog) error {
-	return b.patch(r, uriSys, uriSyslog)
-}
-
-func (b *BigIP) ModifySyslog(r *Syslog) error {
-	return b.put(r, uriSys, uriSyslog)
-}
-
 func (b *BigIP) CreateSNMP(sysContact string, sysLocation string, allowedAddresses []string) error {
 	config := &SNMP{
 		SysContact:       sysContact,
@@ -1250,4 +1176,1046 @@ func (b *BigIP) ModifyRoleInfo(name string, roleInfo *RoleInfo) error {
 
 func (b *BigIP) DeleteRoleInfo(name string) error {
 	return b.delete(uriAuth, uriRemoteRole, uriRoleInfo, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////               Management Route             /////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// ManagementRoutes represents a collection of BIG-IP management routes.
+type ManagementRoutes struct {
+	ManagementRoutes []ManagementRoute `json:"items"`
+}
+
+// ManagementRoute represents a BIG-IP management route configuration.
+type ManagementRoute struct {
+	Name        string `json:"name,omitempty"`
+	FullPath    string `json:"fullPath,omitempty"`
+	Gateway     string `json:"gateway,omitempty"`
+	MTU         int    `json:"mtu,omitempty"`
+	Network     string `json:"network,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// GetManagementRoutes returns a list of management routes.
+func (b *BigIP) GetManagementRoutes() (*ManagementRoutes, error) {
+	var mgmtroute ManagementRoutes
+	err, ok := b.getForEntity(&mgmtroute, uriSys, uriMgmtRoute)
+	if err != nil {
+		if !ok {
+			return &ManagementRoutes{}, nil
+		}
+		return nil, err
+	}
+
+	return &mgmtroute, nil
+}
+
+// GetManagementRoute returns a named Management Route.
+func (b *BigIP) GetManagementRoute(managementroute string) (*ManagementRoute, error) {
+	var mgmtroute ManagementRoute
+	err, ok := b.getForEntity(&mgmtroute, uriSys, uriMgmtRoute, managementroute)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &mgmtroute, nil
+}
+
+// CreateManagementRoute adds a new management route to the BIG-IP system. <dest> must include the
+// subnet mask in CIDR notation, i.e.: "10.1.1.0/24".
+func (b *BigIP) CreateManagementRoute(config *ManagementRoute) error {
+	return b.post(config, uriSys, uriMgmtRoute)
+}
+
+// DeleteManagementRoute removes a management route.
+func (b *BigIP) DeleteManagementRoute(name string) error {
+	return b.delete(uriSys, uriMgmtRoute, name)
+}
+
+// ModifyManagementRoute allows for a change of any attribute of a management route. Fields that
+// can be modified are referenced in the ManagementRoute struct.
+func (b *BigIP) ModifyManagementRoute(name string, config *ManagementRoute) error {
+	return b.put(config, uriSys, uriMgmtRoute, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////          Management Firewall Rule          /////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// MgmtFirewallRules represents a collection of BIG-IP management firewall rules.
+type MgmtFirewallRules struct {
+	MgmtFirewallRules []MgmtFirewallRule `json:"items"`
+}
+
+// MgmtFwRuleAddress represents an IP address or address range for firewall matching.
+type MgmtFwRuleAddress struct {
+	Name string `json:"name,omitempty"`
+}
+
+// MgmtFwRulePort represents a port or port range for firewall matching.
+type MgmtFwRulePort struct {
+	Name string `json:"name,omitempty"`
+}
+
+// MgmtFwRuleICMP represents an ICMP type and code specification for firewall rules.
+// Format is "type:code" (e.g., "3:1" for destination unreachable / host unreachable).
+type MgmtFwRuleICMP struct {
+	Name string `json:"name,omitempty"`
+}
+
+// MgmtFwRuleIpPortData contains source or destination IP and port matching criteria for firewall rules.
+type MgmtFwRuleIpPortData struct {
+	AddressLists []string            `json:"addressLists,omitempty"`
+	Addresses    []MgmtFwRuleAddress `json:"addresses,omitzero"`
+	PortLists    []string            `json:"portLists,omitempty"`
+	Ports        []MgmtFwRulePort    `json:"ports,omitzero"`
+}
+
+// MgmtFirewallRule represents a BIG-IP management firewall rule configuration.
+// These rules control access to the management interface.
+type MgmtFirewallRule struct {
+	Name        string               `json:"name,omitempty"`
+	FullPath    string               `json:"fullPath,omitempty"`
+	Description string               `json:"description,omitempty"`
+	UUID        string               `json:"uuid,omitempty"`
+	Action      string               `json:"action,omitempty" validate:"oneof=accept drop reject"`
+	IpProtocol  string               `json:"ipProtocol,omitempty"`
+	Log         string               `json:"log,omitempty" validate:"oneof=yes no"`
+	PlaceAfter  string               `json:"placeAfter,omitempty"`
+	PlaceBefore string               `json:"placeBefore,omitempty"`
+	Status      string               `json:"status,omitempty"`
+	Schedule    string               `json:"schedule,omitempty"`
+	Destination MgmtFwRuleIpPortData `json:"destination,omitempty"`
+	Source      MgmtFwRuleIpPortData `json:"source,omitempty"`
+	ICMPs       []MgmtFwRuleICMP     `json:"icmp,omitzero"`
+}
+
+func validateMgmtRulePlacing(config *MgmtFirewallRule) error {
+	hasAfter := config.PlaceAfter != ""
+	hasBefore := config.PlaceBefore != ""
+
+	if hasAfter && hasBefore {
+		return errors.New("cannot set both 'PlaceAfter' and 'PlaceBefore', choose one")
+	}
+	if !hasAfter && !hasBefore {
+		return errors.New("must set either 'PlaceAfter' or 'PlaceBefore' for rule placement")
+	}
+	return nil
+}
+
+// GetManagementFwRules returns a list of management firewall rules.
+func (b *BigIP) GetManagementFwRules() (*MgmtFirewallRules, error) {
+	var mgmtfwrules MgmtFirewallRules
+	err, ok := b.getForEntity(&mgmtfwrules, uriSecurity, uriFirewall, uriMgmtIpRules, uriRules)
+	if err != nil {
+		if !ok {
+			return &MgmtFirewallRules{}, nil
+		}
+		return nil, err
+	}
+
+	return &mgmtfwrules, nil
+}
+
+// GetManagementFwRule returns a named Management Firewall Rule.
+func (b *BigIP) GetManagementFwRule(name string) (*MgmtFirewallRule, error) {
+	var mgmtfwrule MgmtFirewallRule
+	err, ok := b.getForEntity(&mgmtfwrule, uriSecurity, uriFirewall, uriMgmtIpRules, uriRules, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &mgmtfwrule, nil
+}
+
+// CreateManagementFwRule adds a new management firewall rule to the BIG-IP system.
+func (b *BigIP) CreateManagementFwRule(config *MgmtFirewallRule) error {
+	err := validateMgmtRulePlacing(config)
+	if err != nil {
+		return err
+	}
+	return b.post(config, uriSecurity, uriFirewall, uriMgmtIpRules, uriRules)
+}
+
+// ModifyManagementFwRule allows you to change any attribute of a management firewall rule.
+func (b *BigIP) ModifyManagementFwRule(name string, config *MgmtFirewallRule) error {
+	return b.put(config, uriSecurity, uriFirewall, uriMgmtIpRules, uriRules, name)
+}
+
+// DeleteManagementFwRule removes a management firewall rule.
+func (b *BigIP) DeleteManagementFwRule(name string) error {
+	return b.delete(uriSecurity, uriFirewall, uriMgmtIpRules, uriRules, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////        Authentication - Remote Role         ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// RemoteRoles represent a collection of the user roles on the BIGIP system.
+type RemoteRoles struct {
+	RemoteRoles []RemoteRole `json:"items"`
+}
+
+// // RemoteRoles represents a specific user role on the BIGIP system.
+type RemoteRole struct {
+	Name          string `json:"name,omitempty"`
+	FullPath      string `json:"fullPath,omitempty"`
+	Generation    int    `json:"generation,omitempty"`
+	Attribute     string `json:"attribute,omitempty"`
+	Console       string `json:"console,omitempty"`
+	Deny          string `json:"deny,omitempty"`
+	Description   string `json:"description,omitempty"`
+	LineOrder     int    `json:"lineOrder,omitempty"`
+	Role          string `json:"role,omitempty"`
+	UserPartition string `json:"userPartition,omitempty"`
+}
+
+// GetRemoteRoles returns a list of all remote role configurations.
+func (b *BigIP) GetRemoteRoles() (*RemoteRoles, error) {
+	var remoteRoles RemoteRoles
+	err, ok := b.getForEntity(&remoteRoles, uriAuth, uriRemoteRole, uriRoleInfo)
+	if err != nil {
+		if !ok {
+			return &RemoteRoles{}, nil
+		}
+		return nil, err
+	}
+
+	return &remoteRoles, nil
+}
+
+// GetRemoteRole returns a named remote role configuration.
+func (b *BigIP) GetRemoteRole(name string) (*RemoteRole, error) {
+	var remoteRole RemoteRole
+	err, ok := b.getForEntity(&remoteRole, uriAuth, uriRemoteRole, uriRoleInfo, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &remoteRole, nil
+}
+
+func validateRemoteRole(config *RemoteRole) error {
+	if config.Attribute == "" {
+		return errors.New("attribute is required (e.g., 'memberof=cn=group,dc=example,dc=com')")
+	}
+	if config.LineOrder == 0 {
+		return errors.New("lineOrder is required")
+	}
+	return nil
+}
+
+// CreateRemoteRole adds a new remote role configuration to the BIG-IP system.
+func (b *BigIP) CreateRemoteRole(config *RemoteRole) error {
+	err := validateRemoteRole(config)
+	if err != nil {
+		return err
+	}
+	return b.post(config, uriAuth, uriRemoteRole, uriRoleInfo)
+}
+
+// ModifyRemoteRole allows the update of the attributes.
+func (b *BigIP) ModifyRemoteRole(name string, config *RemoteRole) error {
+	return b.patch(config, uriAuth, uriRemoteRole, uriRoleInfo, name)
+}
+
+// DeleteRemoteRole removes a remote role configuration.
+func (b *BigIP) DeleteRemoteRole(name string) error {
+	return b.delete(uriAuth, uriRemoteRole, uriRoleInfo, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////            LDAP Authentication              ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// LDAPConfig represents LDAP configuration used for authentication to BIGIP system.
+type LdapConfig struct {
+	Name                  string   `json:"name,omitempty" validate:"eq=system-auth"`
+	BindDn                string   `json:"bindDn,omitempty"`
+	BindPw                string   `json:"bindPw,omitempty"`
+	BindTimeout           int      `json:"bindTimeout,omitempty"`
+	CheckHostAttr         string   `json:"checkHostAttr,omitempty"`
+	CheckRolesGroup       string   `json:"checkRolesGroup,omitempty"`
+	Debug                 string   `json:"debug,omitempty"`
+	Filter                string   `json:"filter,omitempty"`
+	GroupDn               string   `json:"groupDn,omitempty"`
+	GroupMemberAttribute  string   `json:"groupMemberAttribute,omitempty"`
+	IdleTimeout           int      `json:"idleTimeout,omitempty"`
+	IgnoreAuthInfoUnavail string   `json:"ignoreAuthInfoUnavail,omitempty"`
+	IgnoreUnknownUser     string   `json:"ignoreUnknownUser,omitempty"`
+	LoginAttribute        string   `json:"loginAttribute,omitempty"`
+	Port                  int      `json:"port,omitempty"`
+	Referrals             string   `json:"referrals,omitempty"`
+	Scope                 string   `json:"scope,omitempty"`
+	SearchBaseDn          string   `json:"searchBaseDn,omitempty"`
+	SearchTimeout         int      `json:"searchTimeout,omitempty"`
+	Servers               []string `json:"servers,omitempty"`
+	Ssl                   string   `json:"ssl,omitempty"`
+	SslCaCertFile         string   `json:"sslCaCertFile,omitempty"`
+	SslCheckPeer          string   `json:"sslCheckPeer,omitempty"`
+	SslCiphers            string   `json:"sslCiphers,omitempty"`
+	SslClientCert         string   `json:"sslClientCert,omitempty"`
+	SslClientKey          string   `json:"sslClientKey,omitempty"`
+	UserTemplate          string   `json:"userTemplate,omitempty"`
+	Version               int      `json:"version,omitempty"`
+	Warnings              string   `json:"warnings,omitempty"`
+}
+
+// GetLdapConfig returns a named LDAP authentication configuration.
+func (b *BigIP) GetLdapConfig(name string) (*LdapConfig, error) {
+	var ldapConfig LdapConfig
+	err, ok := b.getForEntity(&ldapConfig, uriAuth, uriLdap, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &ldapConfig, nil
+}
+
+func validateLdapConfig(config *LdapConfig) error {
+	if len(config.Servers) == 0 {
+		return errors.New("servers is required option, at least one LDAP server must be specified")
+	}
+	if config.Name != "" && config.Name != "system-auth" {
+		return errors.New("name must be 'system-auth'")
+	}
+	return nil
+}
+
+// CreateLdapConfig adds a new LDAP authentication configuration to the BIG-IP system.
+// BIG-IP only allows the name "system-auth" for LDAP configurations
+func (b *BigIP) CreateLdapConfig(config *LdapConfig) error {
+	err := validateLdapConfig(config)
+	if err != nil {
+		return err
+	}
+	return b.post(config, uriAuth, uriLdap)
+}
+
+// ModifyLdapConfig allows for a change of attribute in LDAP configuration
+func (b *BigIP) ModifyLdapConfig(name string, config *LdapConfig) error {
+	return b.patch(config, uriAuth, uriLdap, name)
+}
+
+// DeleteLdapConfig removes an LDAP authentication configuration.
+func (b *BigIP) DeleteLdapConfig(name string) error {
+	return b.delete(uriAuth, uriLdap, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////          Authentication Source              ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// AuthSource represents authentication source used to access BIGIP system.
+type AuthSource struct {
+	Fallback string `json:"fallback,omitempty"`
+	Type     string `json:"type,omitempty"`
+}
+
+// GetAuthSource retrieves the current authentication source configuration.
+func (b *BigIP) GetAuthSource() (*AuthSource, error) {
+	var authSource AuthSource
+	err, ok := b.getForEntity(&authSource, uriAuth, uriAuthSrc)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &authSource, nil
+}
+
+// CreateAuthSource sets the authentication source configuration.
+func (b *BigIP) CreateAuthSource(config *AuthSource) error {
+	return b.patch(config, uriAuth, uriAuthSrc)
+}
+
+// ModifyAuthSource updates the authentication source configuration.
+func (b *BigIP) ModifyAuthSource(config *AuthSource) error {
+	return b.patch(config, uriAuth, uriAuthSrc)
+}
+
+// DeleteAuthSource resets the authentication source to default values.
+func (b *BigIP) DeleteAuthSource() error {
+	defaultConfig := &AuthSource{
+		Type:     "local",
+		Fallback: "false",
+	}
+	return b.patch(defaultConfig, uriAuth, uriAuthSrc)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////            Authentication Remote User         //////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// RemoteUser represents the authorization data for external users
+type RemoteUser struct {
+	DefaultPartition    string `json:"defaultPartition,omitempty"`
+	DefaultRole         string `json:"defaultRole,omitempty"`
+	RemoteConsoleAccess string `json:"remoteConsoleAccess,omitempty"`
+}
+
+// GetRemoteUser retrieves the current remote user configuration.
+func (b *BigIP) GetRemoteUser() (*RemoteUser, error) {
+	var remoteUser RemoteUser
+	err, ok := b.getForEntity(&remoteUser, uriAuth, uriRemoteUser)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &remoteUser, nil
+}
+
+// CreateRemoteUser sets the remote user configuration.
+func (b *BigIP) CreateRemoteUser(config *RemoteUser) error {
+	return b.patch(config, uriAuth, uriRemoteUser)
+}
+
+// ModifyRemoteUser updates the remote user configuration.
+func (b *BigIP) ModifyRemoteUser(config *RemoteUser) error {
+	return b.patch(config, uriAuth, uriRemoteUser)
+}
+
+// DeleteRemoteUser resets the remote user configuration to default values.
+func (b *BigIP) DeleteRemoteUser() error {
+	defaultConfig := &RemoteUser{
+		DefaultPartition:    "all",
+		DefaultRole:         "no-access",
+		RemoteConsoleAccess: "disabled",
+	}
+	return b.patch(defaultConfig, uriAuth, uriRemoteUser)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////            System Syslog Configuration      ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// SyslogRemoteServer represents a remote syslog server configuration.
+type SyslogRemoteServer struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Host        string `json:"host,omitempty"`
+	LocalIp     string `json:"localIp,omitempty"`
+	RemotePort  int    `json:"remotePort,omitempty"`
+}
+
+// SyslogConfig represents the BIG-IP system syslog configuration.
+type SyslogConfig struct {
+	AuthPrivFrom         string               `json:"authPrivFrom,omitempty"`
+	AuthPrivTo           string               `json:"authPrivTo,omitempty"`
+	ClusteredHostSlot    string               `json:"clusteredHostSlot,omitempty"`
+	ClusteredMessageSlot string               `json:"clusteredMessageSlot,omitempty"`
+	ConsoleLog           string               `json:"consoleLog,omitempty"`
+	CronFrom             string               `json:"cronFrom,omitempty"`
+	CronTo               string               `json:"cronTo,omitempty"`
+	DaemonFrom           string               `json:"daemonFrom,omitempty"`
+	DaemonTo             string               `json:"daemonTo,omitempty"`
+	Description          string               `json:"description,omitempty"`
+	Include              string               `json:"include,omitempty"`
+	IsoDate              string               `json:"isoDate,omitempty"`
+	KernFrom             string               `json:"kernFrom,omitempty"`
+	KernTo               string               `json:"kernTo,omitempty"`
+	Local6From           string               `json:"local6From,omitempty"`
+	Local6To             string               `json:"local6To,omitempty"`
+	MailFrom             string               `json:"mailFrom,omitempty"`
+	MailTo               string               `json:"mailTo,omitempty"`
+	MessagesFrom         string               `json:"messagesFrom,omitempty"`
+	MessagesTo           string               `json:"messagesTo,omitempty"`
+	UserLogFrom          string               `json:"userLogFrom,omitempty"`
+	UserLogTo            string               `json:"userLogTo,omitempty"`
+	RemoteServers        []SyslogRemoteServer `json:"remoteServers,omitzero"`
+}
+
+// GetSyslogConfig retrieves the current system syslog configuration.
+func (b *BigIP) GetSyslogConfig() (*SyslogConfig, error) {
+	var syslogConfig SyslogConfig
+	err, ok := b.getForEntity(&syslogConfig, uriSys, uriSyslog)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &syslogConfig, nil
+}
+
+// CreateSyslogConfig sets the system syslog configuration.
+func (b *BigIP) CreateSyslogConfig(config *SyslogConfig) error {
+	return b.patch(config, uriSys, uriSyslog)
+}
+
+// ModifySyslogConfig updates the system syslog configuration.
+func (b *BigIP) ModifySyslogConfig(config *SyslogConfig) error {
+	return b.patch(config, uriSys, uriSyslog)
+}
+
+// DeleteSyslogConfig resets the system syslog configuration to default values.
+func (b *BigIP) DeleteSyslogConfig() error {
+	defaultConfig := &SyslogConfig{
+		AuthPrivFrom:         "notice",
+		AuthPrivTo:           "emerg",
+		ClusteredHostSlot:    "enabled",
+		ClusteredMessageSlot: "disabled",
+		ConsoleLog:           "enabled",
+		CronFrom:             "warning",
+		CronTo:               "emerg",
+		DaemonFrom:           "notice",
+		DaemonTo:             "emerg",
+		Description:          "none",
+		Include:              "none",
+		IsoDate:              "disabled",
+		KernFrom:             "debug",
+		KernTo:               "emerg",
+		Local6From:           "notice",
+		Local6To:             "emerg",
+		MailFrom:             "notice",
+		MailTo:               "emerg",
+		MessagesFrom:         "notice",
+		MessagesTo:           "warning",
+		UserLogFrom:          "notice",
+		UserLogTo:            "emerg",
+		RemoteServers:        []SyslogRemoteServer{},
+	}
+	return b.patch(defaultConfig, uriSys, uriSyslog)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////         System Global Settings              ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// GlobalSettings represents the BIG-IP system global settings configuration.
+// Only a subset of attributes has been implemented.
+type GlobalSettings struct {
+	GuiSecurityBanner     string `json:"guiSecurityBanner,omitempty"`
+	GuiSecurityBannerText string `json:"guiSecurityBannerText,omitempty"`
+	Hostname              string `json:"hostname,omitempty"`
+}
+
+// GetGlobalSettings retrieves the current system global settings configuration.
+func (b *BigIP) GetGlobalSettings() (*GlobalSettings, error) {
+	var globalSettings GlobalSettings
+	err, ok := b.getForEntity(&globalSettings, uriSys, uriGlobalSettings)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &globalSettings, nil
+}
+
+// CreateGlobalSettings sets the system global settings configuration using PATCH.
+func (b *BigIP) CreateGlobalSettings(config *GlobalSettings) error {
+	return b.patch(config, uriSys, uriGlobalSettings)
+}
+
+// ModifyGlobalSettings updates the system global settings configuration.
+func (b *BigIP) ModifyGlobalSettings(config *GlobalSettings) error {
+	return b.patch(config, uriSys, uriGlobalSettings)
+}
+
+// DeleteGlobalSettings resets the system global settings configuration to default values.
+func (b *BigIP) DeleteGlobalSettings() error {
+	defaultConfig := &GlobalSettings{
+		GuiSecurityBanner:     "enabled",
+		GuiSecurityBannerText: "Welcome to the BIG-IP Configuration Utility.\n\nLog in with your username and password using the fields on the left.",
+		Hostname:              "bigip1",
+	}
+	return b.patch(defaultConfig, uriSys, uriGlobalSettings)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////           SSHD Configuration                ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// SSHDConfig represents the BIG-IP SSHD (SSH daemon) configuration.
+type SSHDConfig struct {
+	Allow             []string `json:"allow,omitempty"`
+	Banner            string   `json:"banner,omitempty"`
+	BannerText        string   `json:"bannerText,omitempty"`
+	FipsCipherVersion int      `json:"fipsCipherVersion"`
+	InactivityTimeout int      `json:"inactivityTimeout"`
+	Include           string   `json:"include,omitempty"`
+	LogLevel          string   `json:"logLevel,omitempty"`
+	Login             string   `json:"login,omitempty"`
+	Port              int      `json:"port,omitempty"`
+}
+
+// GetSSHDConfig retrieves the current SSHD configuration.
+func (b *BigIP) GetSSHDConfig() (*SSHDConfig, error) {
+	var sshdConfig SSHDConfig
+	err, ok := b.getForEntity(&sshdConfig, uriSys, uriSshd)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &sshdConfig, nil
+}
+
+// CreateSSHDConfig sets the SSHD configuration.
+func (b *BigIP) CreateSSHDConfig(config *SSHDConfig) error {
+	return b.patch(config, uriSys, uriSshd)
+}
+
+// ModifySSHDConfig updates the SSHD configuration.
+func (b *BigIP) ModifySSHDConfig(config *SSHDConfig) error {
+	return b.patch(config, uriSys, uriSshd)
+}
+
+// DeleteSSHDConfig resets the SSHD configuration to default values.
+func (b *BigIP) DeleteSSHDConfig() error {
+	defaultConfig := &SSHDConfig{
+		Allow:             []string{"ALL"},
+		Banner:            "disabled",
+		BannerText:        "none",
+		InactivityTimeout: 0,
+		Include:           "none",
+		LogLevel:          "info",
+		Login:             "enabled",
+		Port:              22,
+	}
+	return b.patch(defaultConfig, uriSys, uriSshd)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////           HTTPD Configuration                ///////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// HTTPDConfig represents the BIG-IP HTTPD (HTTP daemon) configuration.
+type HTTPDConfig struct {
+	Allow                    []string `json:"allow,omitempty"`
+	AuthName                 string   `json:"authName,omitempty"`
+	AuthPamDashboardTimeout  string   `json:"authPamDashboardTimeout,omitempty"`
+	AuthPamIdleTimeout       int      `json:"authPamIdleTimeout,omitempty"`
+	AuthPamValidateIp        string   `json:"authPamValidateIp,omitempty"`
+	FastcgiTimeout           int      `json:"fastcgiTimeout,omitempty"`
+	FipsCipherVersion        int      `json:"fipsCipherVersion"`
+	HostnameLookup           string   `json:"hostnameLookup,omitempty"`
+	Include                  string   `json:"include,omitempty"`
+	LogLevel                 string   `json:"logLevel,omitempty"`
+	MaxClients               int      `json:"maxClients,omitempty"`
+	RedirectHttpToHttps      string   `json:"redirectHttpToHttps,omitempty"`
+	RequestBodyMaxTimeout    int      `json:"requestBodyMaxTimeout"`
+	RequestBodyMinRate       int      `json:"requestBodyMinRate"`
+	RequestBodyTimeout       int      `json:"requestBodyTimeout"`
+	RequestHeaderMaxTimeout  int      `json:"requestHeaderMaxTimeout"`
+	RequestHeaderMinRate     int      `json:"requestHeaderMinRate"`
+	RequestHeaderTimeout     int      `json:"requestHeaderTimeout"`
+	SslCaCertFile            string   `json:"sslCaCertFile,omitempty"`
+	SslCertchainfile         string   `json:"sslCertchainfile,omitempty"`
+	SslCertfile              string   `json:"sslCertfile,omitempty"`
+	SslCertkeyfile           string   `json:"sslCertkeyfile,omitempty"`
+	SslCiphersuite           string   `json:"sslCiphersuite,omitempty"`
+	SslInclude               string   `json:"sslInclude,omitempty"`
+	SslOcspDefaultResponder  string   `json:"sslOcspDefaultResponder,omitempty"`
+	SslOcspEnable            string   `json:"sslOcspEnable,omitempty"`
+	SslOcspOverrideResponder string   `json:"sslOcspOverrideResponder,omitempty"`
+	SslOcspResponderTimeout  int      `json:"sslOcspResponderTimeout"`
+	SslOcspResponseMaxAge    int      `json:"sslOcspResponseMaxAge"`
+	SslOcspResponseTimeSkew  int      `json:"sslOcspResponseTimeSkew"`
+	SslPort                  int      `json:"sslPort,omitempty"`
+	SslProtocol              string   `json:"sslProtocol,omitempty"`
+	SslVerifyClient          string   `json:"sslVerifyClient,omitempty"`
+	SslVerifyDepth           int      `json:"sslVerifyDepth,omitempty"`
+}
+
+// GetHTTPDConfig retrieves the current HTTPD configuration.
+func (b *BigIP) GetHTTPDConfig() (*HTTPDConfig, error) {
+	var httpdConfig HTTPDConfig
+	err, ok := b.getForEntity(&httpdConfig, uriSys, uriHttpd)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &httpdConfig, nil
+}
+
+// CreateHTTPDConfig sets the HTTPD configuration.
+func (b *BigIP) CreateHTTPDConfig(config *HTTPDConfig) error {
+	return b.patch(config, uriSys, uriHttpd)
+}
+
+// ModifyHTTPDConfig updates the HTTPD configuration.
+func (b *BigIP) ModifyHTTPDConfig(config *HTTPDConfig) error {
+	return b.patch(config, uriSys, uriHttpd)
+}
+
+// DeleteHTTPDConfig resets the HTTPD configuration to default values.
+func (b *BigIP) DeleteHTTPDConfig() error {
+	defaultConfig := &HTTPDConfig{
+		Allow:                    []string{"All"},
+		AuthName:                 "BIG-IP",
+		AuthPamDashboardTimeout:  "off",
+		AuthPamIdleTimeout:       1200,
+		AuthPamValidateIp:        "on",
+		FastcgiTimeout:           300,
+		HostnameLookup:           "off",
+		Include:                  "none",
+		LogLevel:                 "warn",
+		MaxClients:               10,
+		RedirectHttpToHttps:      "disabled",
+		RequestBodyMaxTimeout:    0,
+		RequestBodyMinRate:       500,
+		RequestBodyTimeout:       60,
+		RequestHeaderMaxTimeout:  40,
+		RequestHeaderMinRate:     500,
+		RequestHeaderTimeout:     20,
+		SslCaCertFile:            "none",
+		SslCertchainfile:         "none",
+		SslCertfile:              "/etc/httpd/conf/ssl.crt/server.crt",
+		SslCertkeyfile:           "/etc/httpd/conf/ssl.key/server.key",
+		SslCiphersuite:           "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA384:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA:AES256-SHA:AES128-SHA256:AES256-SHA256",
+		SslInclude:               "none",
+		SslOcspDefaultResponder:  "http://127.0.0.1",
+		SslOcspEnable:            "off",
+		SslOcspOverrideResponder: "off",
+		SslOcspResponderTimeout:  300,
+		SslOcspResponseMaxAge:    -1,
+		SslOcspResponseTimeSkew:  300,
+		SslPort:                  443,
+		SslProtocol:              "all -SSLv2 -SSLv3 -TLSv1",
+		SslVerifyClient:          "no",
+		SslVerifyDepth:           10,
+	}
+	return b.patch(defaultConfig, uriSys, uriHttpd)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////           SNMP Config                       ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// SnmpConfig represents the BIG-IP SNMP configuration settings.
+type SnmpConfig struct {
+	SysContact       string   `json:"sysContact,omitempty"`
+	SysLocation      string   `json:"sysLocation,omitempty"`
+	AllowedAddresses []string `json:"allowedAddresses,omitzero"`
+}
+
+// GetSnmpConfig retrieves the current SNMP configuration.
+func (b *BigIP) GetSnmpConfig() (*SnmpConfig, error) {
+	var snmpConfig SnmpConfig
+	err, ok := b.getForEntity(&snmpConfig, uriSys, uriSnmp)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &snmpConfig, nil
+}
+
+// CreateSnmpConfig sets the SNMP configuration.
+func (b *BigIP) CreateSnmpConfig(config *SnmpConfig) error {
+	return b.patch(config, uriSys, uriSnmp)
+}
+
+// ModifySnmpConfig updates the SNMP configuration.
+func (b *BigIP) ModifySnmpConfig(config *SnmpConfig) error {
+	return b.patch(config, uriSys, uriSnmp)
+}
+
+// DeleteSnmpConfig resets the SNMP configuration to default values.
+func (b *BigIP) DeleteSnmpConfig() error {
+	defaultConfig := &SnmpConfig{
+		SysContact:       "Customer Name <admin@customer.com>",
+		SysLocation:      "Network Closet 1",
+		AllowedAddresses: []string{"127.0.0.0/8"},
+	}
+	return b.patch(defaultConfig, uriSys, uriSnmp)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////           SNMP Communities                  ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// SnmpCommunities represents a collection of SNMP community configurations.
+type SnmpCommunities struct {
+	SnmpCommunities []SnmpCommunity `json:"items"`
+}
+
+// SnmpCommunity represents an SNMP community string configuration.
+type SnmpCommunity struct {
+	Name          string `json:"name,omitempty"`
+	FullPath      string `json:"fullPath,omitempty"`
+	Access        string `json:"access,omitempty"`
+	CommunityName string `json:"communityName,omitempty"`
+	Description   string `json:"description,omitempty"`
+	Ipv6          string `json:"ipv6,omitempty"`
+	OidSubset     string `json:"oidSubset,omitempty"`
+	Source        string `json:"source,omitempty"`
+}
+
+// GetSnmpCommunities returns a list of all SNMP community configurations.
+func (b *BigIP) GetSnmpCommunities() (*SnmpCommunities, error) {
+	var snmpCommunities SnmpCommunities
+	err, ok := b.getForEntity(&snmpCommunities, uriSys, uriSnmp, uriCommunities)
+	if err != nil {
+		if !ok {
+			return &SnmpCommunities{}, nil
+		}
+		return nil, err
+	}
+
+	return &snmpCommunities, nil
+}
+
+// GetSnmpCommunity returns a named SNMP community configuration.
+func (b *BigIP) GetSnmpCommunity(name string) (*SnmpCommunity, error) {
+	var snmpCommunity SnmpCommunity
+	err, ok := b.getForEntity(&snmpCommunity, uriSys, uriSnmp, uriCommunities, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &snmpCommunity, nil
+}
+
+func validateSnmpCommunity(config *SnmpCommunity) error {
+	if config.CommunityName == "" {
+		return errors.New("communityName is required")
+	}
+	return nil
+}
+
+// CreateSnmpCommunity adds a new SNMP community configuration to the BIG-IP system.
+func (b *BigIP) CreateSnmpCommunity(config *SnmpCommunity) error {
+	err := validateSnmpCommunity(config)
+	if err != nil {
+		return err
+	}
+	return b.post(config, uriSys, uriSnmp, uriCommunities)
+}
+
+// ModifySnmpCommunity allows the change of any attribute in SNMP community configuration.
+func (b *BigIP) ModifySnmpCommunity(name string, config *SnmpCommunity) error {
+	return b.put(config, uriSys, uriSnmp, uriCommunities, name)
+}
+
+// DeleteSnmpCommunity removes an SNMP community configuration.
+func (b *BigIP) DeleteSnmpCommunity(name string) error {
+	return b.delete(uriSys, uriSnmp, uriCommunities, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////              SNMP Users                     ////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// SnmpUsers represents a collection of SNMP user configurations.
+type SnmpUsers struct {
+	SnmpUsers []SnmpUser `json:"items"`
+}
+
+// SnmpUser represents an SNMPv3 user account configuration.
+type SnmpUser struct {
+	Name            string `json:"name,omitempty"`
+	FullPath        string `json:"fullPath,omitempty"`
+	Access          string `json:"access,omitempty"`
+	AuthPassword    string `json:"authPassword"`
+	AuthProtocol    string `json:"authProtocol,omitempty"`
+	Description     string `json:"description,omitempty"`
+	OidSubset       string `json:"oidSubset,omitempty"`
+	PrivacyPassword string `json:"privacyPassword"`
+	PrivacyProtocol string `json:"privacyProtocol,omitempty"`
+	SecurityLevel   string `json:"securityLevel,omitempty"`
+	Username        string `json:"username,omitempty"`
+}
+
+// GetSnmpUsers returns a list of all SNMP user configurations.
+func (b *BigIP) GetSnmpUsers() (*SnmpUsers, error) {
+	var snmpUsers SnmpUsers
+	err, ok := b.getForEntity(&snmpUsers, uriSys, uriSnmp, uriSnmpUsers)
+	if err != nil {
+		if !ok {
+			return &SnmpUsers{}, nil
+		}
+		return nil, err
+	}
+
+	return &snmpUsers, nil
+}
+
+// GetSnmpUser returns a named SNMP user configuration.
+func (b *BigIP) GetSnmpUser(name string) (*SnmpUser, error) {
+	var snmpUser SnmpUser
+	err, ok := b.getForEntity(&snmpUser, uriSys, uriSnmp, uriSnmpUsers, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &snmpUser, nil
+}
+
+func validateSnmpUser(config *SnmpUser) error {
+	if config.Username == "" {
+		return errors.New("username is required")
+	}
+	if config.AuthProtocol == "" {
+		return errors.New("authProtocol is required (e.g., 'sha', 'md5')")
+	}
+	if config.PrivacyProtocol == "" {
+		return errors.New("privacyProtocol is required (e.g., 'aes', 'des')")
+	}
+	return nil
+}
+
+// CreateSnmpUser adds a new SNMP user configuration to the BIG-IP system.
+func (b *BigIP) CreateSnmpUser(config *SnmpUser) error {
+	err := validateSnmpUser(config)
+	if err != nil {
+		return err
+	}
+	return b.post(config, uriSys, uriSnmp, uriSnmpUsers)
+}
+
+// ModifySnmpUser allows you to change any attribute of an SNMP user configuration.
+// We need to use PATCH method due to "authPasswordEncrypted" and "privacyPasswordEncrypted" attribute
+// DOCUMENTATION: "privacyPasswordEncrypted": "Encrypted password used to encrypt traffic.
+// NOTICE: This display only field is deprecated in TMOS 14.1.0"
+func (b *BigIP) ModifySnmpUser(name string, config *SnmpUser) error {
+	return b.patch(config, uriSys, uriSnmp, uriSnmpUsers, name)
+}
+
+// DeleteSnmpUser removes an SNMP user configuration.
+func (b *BigIP) DeleteSnmpUser(name string) error {
+	return b.delete(uriSys, uriSnmp, uriSnmpUsers, name)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////               HA Group                         /////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// HaGroups represents a collection of HA Group configurations.
+type HaGroups struct {
+	HaGroups []HaGroup `json:"items"`
+}
+
+// HaGroupPool represents a pool configuration within an HA Group.
+type HaGroupPool struct {
+	Name                string `json:"name,omitempty"`
+	Attribute           string `json:"attribute,omitempty"`
+	MinimumThreshold    int    `json:"minimumThreshold"`
+	PercentUp           int    `json:"percentUp"`
+	SufficientThreshold string `json:"sufficientThreshold,omitempty"`
+	Weight              int    `json:"weight,omitempty"`
+}
+
+// HaGroupCluster represents a cluster configuration within an HA Group.
+type HaGroupCluster struct {
+	Name                string `json:"name,omitempty"`
+	Attribute           string `json:"attribute,omitempty"`
+	MinimumThreshold    int    `json:"minimumThreshold"`
+	PercentUp           int    `json:"percentUp"`
+	SufficientThreshold string `json:"sufficientThreshold,omitempty"`
+	Weight              int    `json:"weight,omitempty"`
+}
+
+// HaGroupTrunk represents a trunk configuration within an HA Group.
+type HaGroupTrunk struct {
+	Name                string `json:"name,omitempty"`
+	Attribute           string `json:"attribute,omitempty"`
+	MinimumThreshold    int    `json:"minimumThreshold"`
+	PercentUp           int    `json:"percentUp"`
+	SufficientThreshold string `json:"sufficientThreshold,omitempty"`
+	Weight              int    `json:"weight,omitempty"`
+}
+
+// HaGroup represents an HA Group configuration for failover scoring.
+type HaGroup struct {
+	Name        string           `json:"name,omitempty"`
+	FullPath    string           `json:"fullPath,omitempty"`
+	ActiveBonus int              `json:"activeBonus"`
+	Description string           `json:"description,omitempty"`
+	Enabled     bool             `json:"enabled"`
+	Disabled    bool             `json:"disabled"`
+	Pools       []HaGroupPool    `json:"pools,omitzero"`
+	Clusters    []HaGroupCluster `json:"clusters,omitzero"`
+	Trunks      []HaGroupTrunk   `json:"trunks,omitzero"`
+}
+
+// GetHaGroups returns a list of all HA Group configurations.
+func (b *BigIP) GetHaGroups() (*HaGroups, error) {
+	var haGroups HaGroups
+	err, ok := b.getForEntity(&haGroups, uriSys, uriHaGroup)
+	if err != nil {
+		if !ok {
+			return &HaGroups{}, nil
+		}
+		return nil, err
+	}
+
+	return &haGroups, nil
+}
+
+// GetHaGroup returns a named HA Group configuration.
+func (b *BigIP) GetHaGroup(name string) (*HaGroup, error) {
+	var haGroup HaGroup
+	err, ok := b.getForEntity(&haGroup, uriSys, uriHaGroup, name)
+	if err != nil {
+		if !ok {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &haGroup, nil
+}
+
+func validateHaGroupState(config *HaGroup) error {
+	if config.Enabled == config.Disabled {
+		return fmt.Errorf(`"enabled" and "disabled" cannot have the same value`)
+	}
+	return nil
+}
+
+// CreateHaGroup adds a new HA Group configuration to the BIG-IP system.
+func (b *BigIP) CreateHaGroup(config *HaGroup) error {
+	if err := validateHaGroupState(config); err != nil {
+		return err
+	}
+	return b.post(config, uriSys, uriHaGroup)
+}
+
+// ModifyHaGroup allows you to change any attribute of an HA Group configuration.
+func (b *BigIP) ModifyHaGroup(name string, config *HaGroup) error {
+	if err := validateHaGroupState(config); err != nil {
+		return err
+	}
+	return b.put(config, uriSys, uriHaGroup, name)
+}
+
+// DeleteHaGroup removes an HA Group configuration.
+func (b *BigIP) DeleteHaGroup(name string) error {
+	return b.delete(uriSys, uriHaGroup, name)
 }
